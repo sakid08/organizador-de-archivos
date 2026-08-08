@@ -1,10 +1,43 @@
-EXTENSIONES_POR_DEFECTO = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"]
+# Categorías de archivos soportadas. Cada una puede activarse/desactivarse
+# de forma independiente y todas se procesan en la misma pasada.
+# Los archivos que no encajen en ninguna categoría activa van a CARPETA_OTROS.
+CATEGORIAS_DEFAULT = [
+    {
+        "id": "imagenes",
+        "nombre": "Imágenes",
+        "prefijo": "Fondos de pantalla",
+        "extensiones": [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tiff", ".svg"],
+        "activa": True,
+    },
+    {
+        "id": "videos",
+        "nombre": "Videos",
+        "prefijo": "Películas",
+        "extensiones": [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v"],
+        "activa": True,
+    },
+    {
+        "id": "documentos",
+        "nombre": "Documentos",
+        "prefijo": "Documentos",
+        "extensiones": [".pdf", ".doc", ".docx", ".txt", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".csv"],
+        "activa": True,
+    },
+    {
+        "id": "musica",
+        "nombre": "Música",
+        "prefijo": "Música",
+        "extensiones": [".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac", ".wma"],
+        "activa": True,
+    },
+]
+
+CARPETA_OTROS = "otros_formatos"
 
 # Configuración por defecto
 CONFIG_DEFAULT = {
-    "prefijo": "Fondos de pantalla",
     "digitos": 4,
-    "imagenes_por_carpeta": 600,
+    "archivos_por_carpeta": 600,
     "mostrar_detalle": True
 }
 
@@ -18,4 +51,4 @@ LOG_COLORS = {
 
 # Tamaños y dimensiones de la ventana
 VENTANA_TITULO = "Organizador de Imágenes y Archivos"
-VENTANA_DIMENSIONES = "900x700"
+VENTANA_DIMENSIONES = "960x780"

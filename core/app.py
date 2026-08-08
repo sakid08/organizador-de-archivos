@@ -1,37 +1,38 @@
 # core/app.py
 """Controlador principal de la aplicación"""
 
+import copy
 import threading
 from pathlib import Path
 from tkinter import messagebox
 
 from core.organizador import OrganizadorArchivos
-from core.config import EXTENSIONES_POR_DEFECTO
+from core.config import CATEGORIAS_DEFAULT
 from core.utils import normalizar_extensiones
 
 class AppController:
     """Controlador de la aplicación"""
-    
+
     def __init__(self, ventana):
         self.ventana = ventana
         self.proceso_activo = False
-        self.extensiones = EXTENSIONES_POR_DEFECTO.copy()
-        
-        # Actualizar extensiones en la interfaz
-        self.ventana.actualizar_extensiones(self.extensiones)
-    
+        self.categorias = copy.deepcopy(CATEGORIAS_DEFAULT)
+
+        # Inicializar la interfaz con las categorías disponibles
+        self.ventana.inicializar_categorias(self.categorias)
+
     def agregar_log(self, mensaje, tipo="INFO"):
         """Agrega mensaje al log a través de la ventana"""
         self.ventana.agregar_log(mensaje, tipo)
-    
+
     def _debe_detener(self) -> bool:
         """Verifica si el proceso debe detenerse"""
         return not self.proceso_activo
-    
+
     def _actualizar_progreso(self, mensaje):
         """Actualiza mensaje de progreso"""
         self.ventana.set_progress_label(mensaje)
-    
+
     def _finalizar_proceso(self):
         """Finaliza el proceso y limpia el estado"""
         self.proceso_activo = False
@@ -39,132 +40,160 @@ class AppController:
         self.ventana.set_progreso("detenido")
         self.ventana.set_progress_label("Proceso finalizado")
         self.ventana.set_status("Listo")
-    
+
+    def _categorias_activas(self):
+        """Construye la lista de categorías activas con sus prefijos actuales"""
+        activas = []
+        for categoria in self.categorias:
+            if not self.ventana.categoria_activa(categoria["id"]):
+                continue
+            activas.append({
+                "id": categoria["id"],
+                "nombre": categoria["nombre"],
+                "prefijo": self.ventana.categoria_prefijo(categoria["id"]),
+                "extensiones": categoria["extensiones"],
+            })
+        return activas
+
     def iniciar_renombrado(self):
-        """Inicia el proceso de renombrado de carpetas"""
+        """Inicia el proceso de renombrado de carpetas de una categoría"""
         if self.proceso_activo:
             messagebox.showwarning("Proceso activo", "Ya hay un proceso en ejecución")
             return
-        
+
+        prefijo = self.ventana.categoria_renombrado_seleccionada()
+        if not prefijo:
+            messagebox.showwarning("Sin categoría", "Selecciona una categoría activa para renombrar")
+            return
+
         def ejecutar_renombrado():
             try:
                 self._iniciar_proceso()
                 self.agregar_log("="*50, "INFO")
                 self.agregar_log("INICIANDO RENOMBRADO DE CARPETAS", "INFO")
-                
+
                 ruta_base = Path(self.ventana.ruta_base.get())
-                prefijo = self.ventana.prefijo.get()
                 digitos = self.ventana.digitos.get()
-                
+
                 self.agregar_log(f"Ruta base: {ruta_base}")
                 self.agregar_log(f"Prefijo: {prefijo}")
-                
-                # Instanciar organizador
+
                 organizador = OrganizadorArchivos(
                     ruta_base=ruta_base,
-                    prefijo=prefijo,
+                    categorias=self._categorias_activas(),
                     digitos=digitos,
-                    imagenes_por_carpeta=self.ventana.imagenes_por_carpeta.get(),
-                    extensiones=self.extensiones,
+                    archivos_por_carpeta=self.ventana.archivos_por_carpeta.get(),
                     callback_log=self.agregar_log,
                     callback_progreso=self._actualizar_progreso,
                     detener_callback=self._debe_detener,
                     mostrar_detalle=self.ventana.mostrar_detalle.get()
                 )
-                
-                # Ejecutar renombrado
-                procesadas, renombradas = organizador.renombrar_carpetas()
-                
+
+                procesadas, renombradas = organizador.renombrar_carpetas(prefijo)
+
                 self.agregar_log(f"\n✅ Renombrado completado. {renombradas} carpetas renombradas.", "SUCCESS")
                 self.agregar_log("="*50, "INFO")
-                
+
                 if not self.proceso_activo:
                     self.agregar_log("⚠ Proceso detenido por el usuario", "WARNING")
-                
+
             except Exception as e:
                 self.agregar_log(f"❌ Error fatal: {e}", "ERROR")
                 messagebox.showerror("Error", f"Ocurrió un error:\n{e}")
             finally:
                 self._finalizar_proceso()
-        
+
         threading.Thread(target=ejecutar_renombrado, daemon=True).start()
-    
+
     def iniciar_organizacion(self):
         """Inicia el proceso de organización de archivos"""
         if self.proceso_activo:
             messagebox.showwarning("Proceso activo", "Ya hay un proceso en ejecución")
             return
-        
+
+        categorias_activas = self._categorias_activas()
+        if not categorias_activas:
+            messagebox.showwarning("Sin categorías", "Activa al menos una categoría para organizar")
+            return
+
         def ejecutar_organizacion():
             try:
                 self._iniciar_proceso()
                 self.agregar_log("="*50, "INFO")
                 self.agregar_log("INICIANDO ORGANIZACIÓN DE ARCHIVOS", "INFO")
-                
+
                 ruta_base = Path(self.ventana.ruta_base.get())
-                prefijo = self.ventana.prefijo.get()
                 digitos = self.ventana.digitos.get()
-                imagenes_por_carpeta = self.ventana.imagenes_por_carpeta.get()
+                archivos_por_carpeta = self.ventana.archivos_por_carpeta.get()
                 mostrar_detalle = self.ventana.mostrar_detalle.get()
-                
+
                 self.agregar_log(f"Ruta base: {ruta_base}")
-                self.agregar_log(f"Prefijo: {prefijo}")
-                self.agregar_log(f"Imágenes por carpeta: {imagenes_por_carpeta}")
-                self.agregar_log(f"Extensiones: {', '.join(self.extensiones)}")
+                self.agregar_log(f"Categorías activas: {', '.join(c['nombre'] for c in categorias_activas)}")
+                self.agregar_log(f"Archivos por carpeta: {archivos_por_carpeta}")
                 self.agregar_log(f"Mostrar detalles: {mostrar_detalle}")
-                
-                # Instanciar organizador
+
                 organizador = OrganizadorArchivos(
                     ruta_base=ruta_base,
-                    prefijo=prefijo,
+                    categorias=categorias_activas,
                     digitos=digitos,
-                    imagenes_por_carpeta=imagenes_por_carpeta,
-                    extensiones=self.extensiones,
+                    archivos_por_carpeta=archivos_por_carpeta,
                     callback_log=self.agregar_log,
                     callback_progreso=self._actualizar_progreso,
                     detener_callback=self._debe_detener,
                     mostrar_detalle=mostrar_detalle
                 )
-                
-                # Ejecutar organización
+
                 estadisticas = organizador.organizar_archivos()
-                
+
                 self.agregar_log(f"\n✅ PROCESO FINALIZADO", "SUCCESS")
-                self.agregar_log(f"   📸 Imágenes organizadas: {estadisticas['imagenes']}", "SUCCESS")
-                self.agregar_log(f"   📄 Otros archivos movidos: {estadisticas['otros']}", "SUCCESS")
-                self.agregar_log(f"   📁 Carpetas eliminadas: {estadisticas['carpetas_eliminadas']}", "SUCCESS")
+                for categoria in categorias_activas:
+                    total = estadisticas.get(categoria["id"], 0)
+                    self.agregar_log(f"   📦 {categoria['nombre']}: {total}", "SUCCESS")
+                self.agregar_log(f"   📄 Sin categoría (otros formatos): {estadisticas['otros']}", "SUCCESS")
+                self.agregar_log(f"   🧹 Carpetas eliminadas: {estadisticas['carpetas_eliminadas']}", "SUCCESS")
                 self.agregar_log("="*50, "INFO")
-                
+
                 if not self.proceso_activo:
                     self.agregar_log("⚠ Proceso detenido por el usuario", "WARNING")
                 else:
-                    messagebox.showinfo("Completado", 
+                    resumen = "\n".join(
+                        f"{c['nombre']}: {estadisticas.get(c['id'], 0)}" for c in categorias_activas
+                    )
+                    messagebox.showinfo("Completado",
                         f"Proceso finalizado exitosamente!\n\n"
-                        f"Imágenes organizadas: {estadisticas['imagenes']}\n"
-                        f"Otros archivos: {estadisticas['otros']}")
-                
+                        f"{resumen}\n"
+                        f"Otros formatos: {estadisticas['otros']}")
+
             except Exception as e:
                 self.agregar_log(f"❌ Error fatal: {e}", "ERROR")
                 messagebox.showerror("Error", f"Ocurrió un error:\n{e}")
             finally:
                 self._finalizar_proceso()
-        
+
         threading.Thread(target=ejecutar_organizacion, daemon=True).start()
-    
+
     def detener_proceso(self):
         """Detiene el proceso en ejecución"""
         self.proceso_activo = False
         self.agregar_log("⚠ Deteniendo proceso...", "WARNING")
-    
+
     def _iniciar_proceso(self):
         """Prepara la interfaz para iniciar un proceso"""
         self.proceso_activo = True
         self.ventana.habilitar_botones(False)
         self.ventana.set_progreso("iniciando")
         self.ventana.set_status("Procesando...")
-    
-    def editar_extensiones(self, nuevas_extensiones):
-        """Actualiza las extensiones soportadas"""
-        self.extensiones = normalizar_extensiones(nuevas_extensiones)
-        self.ventana.actualizar_extensiones(self.extensiones)
-        self.agregar_log(f"Extensiones actualizadas: {', '.join(self.extensiones)}", "INFO")
+
+    def editar_extensiones_categoria(self, categoria_id, nuevas_extensiones):
+        """Actualiza las extensiones soportadas de una categoría"""
+        extensiones = normalizar_extensiones(nuevas_extensiones)
+        for categoria in self.categorias:
+            if categoria["id"] == categoria_id:
+                categoria["extensiones"] = extensiones
+                nombre = categoria["nombre"]
+                break
+        else:
+            return
+
+        self.ventana.actualizar_extensiones_categoria(categoria_id, extensiones)
+        self.agregar_log(f"Extensiones de '{nombre}' actualizadas: {', '.join(extensiones)}", "INFO")

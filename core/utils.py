@@ -1,30 +1,33 @@
 from pathlib import Path
 from datetime import datetime
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 import os
 
-def obtener_archivos_carpeta(carpeta: Path, extensiones: List[str]) -> Tuple[List[Path], List[Path]]:
+def clasificar_archivos_carpeta(carpeta: Path, mapa_extensiones: Dict[str, str]) -> Tuple[Dict[str, List[Path]], List[Path]]:
     """
-    Separa archivos de una carpeta en imágenes y otros archivos
-    
+    Separa los archivos de una carpeta según la categoría a la que pertenece su extensión
+
     Args:
         carpeta: Path de la carpeta a procesar
-        extensiones: Lista de extensiones de imágenes
-    
+        mapa_extensiones: Diccionario {extension: id_categoria} de categorías activas
+
     Returns:
-        (lista_imagenes, lista_otros)
+        (dict {id_categoria: [archivos]}, lista_sin_categoria)
     """
-    imagenes = []
-    otros = []
-    
+    por_categoria: Dict[str, List[Path]] = {}
+    sin_categoria = []
+
     for archivo in carpeta.iterdir():
-        if archivo.is_file():
-            if archivo.suffix.lower() in extensiones:
-                imagenes.append(archivo)
-            else:
-                otros.append(archivo)
-    
-    return imagenes, otros
+        if not archivo.is_file():
+            continue
+
+        id_categoria = mapa_extensiones.get(archivo.suffix.lower())
+        if id_categoria:
+            por_categoria.setdefault(id_categoria, []).append(archivo)
+        else:
+            sin_categoria.append(archivo)
+
+    return por_categoria, sin_categoria
 
 def crear_nombre_unico(destino: Path) -> Path:
     """
