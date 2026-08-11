@@ -8,6 +8,7 @@ CATEGORIAS_DEFAULT = [
         "prefijo": "Fondos de pantalla",
         "extensiones": [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tiff", ".svg"],
         "activa": True,
+        "personalizada": False,
     },
     {
         "id": "videos",
@@ -15,6 +16,7 @@ CATEGORIAS_DEFAULT = [
         "prefijo": "Películas",
         "extensiones": [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v"],
         "activa": True,
+        "personalizada": False,
     },
     {
         "id": "documentos",
@@ -22,6 +24,7 @@ CATEGORIAS_DEFAULT = [
         "prefijo": "Documentos",
         "extensiones": [".pdf", ".doc", ".docx", ".txt", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".csv"],
         "activa": True,
+        "personalizada": False,
     },
     {
         "id": "musica",
@@ -29,6 +32,7 @@ CATEGORIAS_DEFAULT = [
         "prefijo": "Música",
         "extensiones": [".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac", ".wma"],
         "activa": True,
+        "personalizada": False,
     },
 ]
 

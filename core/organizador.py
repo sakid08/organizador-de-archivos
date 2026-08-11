@@ -3,7 +3,7 @@
 from pathlib import Path
 import shutil
 from typing import List, Tuple, Callable, Optional, Dict
-from core.utils import crear_nombre_unico, clasificar_archivos_carpeta
+from core.utils import crear_nombre_unico, clasificar_archivos_carpeta, carpeta_pertenece_a_prefijo
 from core.config import CARPETA_OTROS
 
 class OrganizadorArchivos:
@@ -17,7 +17,8 @@ class OrganizadorArchivos:
                  callback_log: Optional[Callable] = None,
                  callback_progreso: Optional[Callable] = None,
                  detener_callback: Optional[Callable[[], bool]] = None,
-                 mostrar_detalle: bool = True):
+                 mostrar_detalle: bool = True,
+                 incluir_archivos_sueltos: bool = False):
         """
         Inicializa el organizador
 
@@ -31,6 +32,9 @@ class OrganizadorArchivos:
             callback_progreso: Función para actualizar progreso
             detener_callback: Función que retorna True si se debe detener
             mostrar_detalle: Si se deben mostrar logs detallados
+            incluir_archivos_sueltos: Si se deben organizar también los archivos
+                                       sueltos directamente en la ruta base (no
+                                       dentro de ninguna carpeta)
         """
         self.ruta_base = ruta_base
         self.categorias = categorias
@@ -40,6 +44,7 @@ class OrganizadorArchivos:
         self.callback_progreso = callback_progreso or (lambda msg: None)
         self.detener_callback = detener_callback or (lambda: False)
         self.mostrar_detalle = mostrar_detalle
+        self.incluir_archivos_sueltos = incluir_archivos_sueltos
 
         # Mapa extensión -> id de categoría, para clasificar en una sola pasada
         self.mapa_extensiones: Dict[str, str] = {}
@@ -66,7 +71,7 @@ class OrganizadorArchivos:
         """
         carpetas = sorted([
             c for c in self.ruta_base.iterdir()
-            if c.is_dir() and not c.name.startswith(prefijo)
+            if c.is_dir() and not carpeta_pertenece_a_prefijo(c.name, prefijo)
         ])
 
         self._log(f"Encontradas {len(carpetas)} carpetas para renombrar")
@@ -113,21 +118,33 @@ class OrganizadorArchivos:
         otros_archivos: List[Path] = []
         carpetas_revisar = []
 
-        for carpeta in sorted(self.ruta_base.iterdir()):
+        if self.incluir_archivos_sueltos:
+            self._log("📄 Incluyendo también los archivos sueltos en la ruta base")
+
+        for item in sorted(self.ruta_base.iterdir()):
             if self._debe_detener():
                 break
-            if not carpeta.is_dir():
-                continue
-            if carpeta.name == CARPETA_OTROS or any(carpeta.name.startswith(p) for p in prefijos_activos):
-                continue
 
-            carpetas_revisar.append(carpeta)
-            clasificados, sin_categoria = clasificar_archivos_carpeta(carpeta, self.mapa_extensiones)
+            if item.is_dir():
+                carpeta = item
+                if carpeta.name == CARPETA_OTROS or any(
+                        carpeta_pertenece_a_prefijo(carpeta.name, p) for p in prefijos_activos):
+                    continue
 
-            for id_categoria, archivos in clasificados.items():
-                for archivo in archivos:
-                    archivos_por_categoria[id_categoria].append((archivo, archivo.stat().st_mtime))
-            otros_archivos.extend(sin_categoria)
+                carpetas_revisar.append(carpeta)
+                clasificados, sin_categoria = clasificar_archivos_carpeta(carpeta, self.mapa_extensiones)
+
+                for id_categoria, archivos in clasificados.items():
+                    for archivo in archivos:
+                        archivos_por_categoria[id_categoria].append((archivo, archivo.stat().st_mtime))
+                otros_archivos.extend(sin_categoria)
+
+            elif self.incluir_archivos_sueltos and item.is_file():
+                id_categoria = self.mapa_extensiones.get(item.suffix.lower())
+                if id_categoria:
+                    archivos_por_categoria[id_categoria].append((item, item.stat().st_mtime))
+                else:
+                    otros_archivos.append(item)
 
         if self._debe_detener():
             return self.estadisticas
