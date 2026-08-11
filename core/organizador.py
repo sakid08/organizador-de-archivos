@@ -172,6 +172,57 @@ class OrganizadorArchivos:
 
         return self.estadisticas
 
+    def organizar_todo(self, prefijo: str) -> dict:
+        """
+        Organiza TODOS los archivos encontrados en carpetas numeradas con un único
+        prefijo, sin distinguir entre categorías/tipos de archivo.
+
+        Args:
+            prefijo: Prefijo de carpeta a usar para agrupar todos los archivos
+
+        Returns:
+            Diccionario con estadísticas del proceso: {"total": N, "carpetas_eliminadas": N}
+        """
+        self._log("Iniciando organización de TODOS los archivos (sin distinguir tipo)")
+        self._actualizar_progreso("Buscando archivos...")
+
+        todos_archivos: List[Tuple[Path, float]] = []
+        carpetas_revisar = []
+
+        if self.incluir_archivos_sueltos:
+            self._log("📄 Incluyendo también los archivos sueltos en la ruta base")
+
+        for item in sorted(self.ruta_base.iterdir()):
+            if self._debe_detener():
+                break
+
+            if item.is_dir():
+                carpeta = item
+                if carpeta.name == CARPETA_OTROS or carpeta_pertenece_a_prefijo(carpeta.name, prefijo):
+                    continue
+
+                carpetas_revisar.append(carpeta)
+                for archivo in carpeta.iterdir():
+                    if archivo.is_file():
+                        todos_archivos.append((archivo, archivo.stat().st_mtime))
+
+            elif self.incluir_archivos_sueltos and item.is_file():
+                todos_archivos.append((item, item.stat().st_mtime))
+
+        if self._debe_detener():
+            return {"total": 0, "carpetas_eliminadas": self.estadisticas["carpetas_eliminadas"]}
+
+        self._log(f"📦 Total de archivos encontrados: {len(todos_archivos)}")
+
+        if todos_archivos:
+            categoria_generica = {"nombre": "archivos", "prefijo": prefijo}
+            self._mover_categoria(categoria_generica, todos_archivos)
+
+        # Limpiar carpetas vacías
+        self._limpiar_carpetas_vacias(carpetas_revisar)
+
+        return {"total": len(todos_archivos), "carpetas_eliminadas": self.estadisticas["carpetas_eliminadas"]}
+
     def _mover_otros_archivos(self, archivos: List[Path]):
         """Mueve archivos sin categoría reconocida a 'otros_formatos/'"""
         carpeta_otros = self.ruta_base / CARPETA_OTROS

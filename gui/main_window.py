@@ -39,6 +39,9 @@ class VentanaPrincipal:
         # Variable de la categoría elegida para "Solo renombrar carpetas"
         self.categoria_renombrado = tk.StringVar(value="")
 
+        # Prefijo para agrupar TODOS los archivos sin distinguir tipo
+        self.prefijo_general = tk.StringVar(value="Archivos")
+
         # Estado por categoría: id -> {"activa": BooleanVar, "prefijo": StringVar,
         #                              "nombre": str, "extensiones": list, "ext_label": ttk.Label}
         self.categorias_estado = {}
@@ -50,6 +53,7 @@ class VentanaPrincipal:
         self.btn_organizar = None
         self.btn_renombrar = None
         self.btn_detener = None
+        self.btn_agrupar_todo = None
 
         # Crear interfaz
         self._setup_estilos()
@@ -65,6 +69,8 @@ class VentanaPrincipal:
             self.btn_renombrar.config(command=self.app_controller.iniciar_renombrado)
         if self.btn_detener:
             self.btn_detener.config(command=self.app_controller.detener_proceso)
+        if self.btn_agrupar_todo:
+            self.btn_agrupar_todo.config(command=self.app_controller.iniciar_organizacion_general)
 
     def _setup_estilos(self):
         """Configura un tema claro y moderno para los widgets ttk"""
@@ -482,6 +488,15 @@ class VentanaPrincipal:
                                               state="readonly", width=28)
         self.combo_renombrado.pack(side=tk.LEFT)
 
+        # Fila para agrupar TODOS los archivos sin distinguir tipo/extensión
+        fila_general = ttk.Frame(buttons_frame, style="TFrame")
+        fila_general.grid(row=2, column=0, sticky=tk.W, pady=(10, 0))
+        ttk.Label(fila_general, text="Prefijo para agrupar todo:", style="TLabel").pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Entry(fila_general, textvariable=self.prefijo_general, width=20).pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_agrupar_todo = ttk.Button(fila_general, text="📁  Agrupar todos los archivos (sin distinguir tipo)",
+                                            style="Secondary.TButton")
+        self.btn_agrupar_todo.pack(side=tk.LEFT)
+
         return buttons_frame
 
     def _crear_frame_progreso(self, parent):
@@ -580,5 +595,7 @@ class VentanaPrincipal:
             self.btn_organizar.config(state=estado)
         if self.btn_renombrar:
             self.btn_renombrar.config(state=estado)
+        if self.btn_agrupar_todo:
+            self.btn_agrupar_todo.config(state=estado)
         if self.btn_detener:
             self.btn_detener.config(state=tk.DISABLED if habilitados else tk.NORMAL)
