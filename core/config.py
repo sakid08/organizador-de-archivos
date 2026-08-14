@@ -5,7 +5,7 @@ CATEGORIAS_DEFAULT = [
     {
         "id": "imagenes",
         "nombre": "Imágenes",
-        "prefijo": "Fondos de pantalla",
+        "prefijo": "Imagenes",
         "extensiones": [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tiff", ".svg"],
         "activa": True,
         "personalizada": False,

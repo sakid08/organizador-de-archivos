@@ -6,6 +6,11 @@ from typing import List, Tuple, Callable, Optional, Dict
 from core.utils import crear_nombre_unico, clasificar_archivos_carpeta, carpeta_pertenece_a_prefijo
 from core.config import CARPETA_OTROS
 
+# Modos mutuamente excluyentes para decidir qué elementos procesar
+MODO_SOLO_CARPETAS = "carpetas"
+MODO_SOLO_SUELTOS = "sueltos"
+MODO_TODOS = "todos"
+
 class OrganizadorArchivos:
     """Clase encargada de la lógica de organización de archivos por categorías"""
 
@@ -18,7 +23,7 @@ class OrganizadorArchivos:
                  callback_progreso: Optional[Callable] = None,
                  detener_callback: Optional[Callable[[], bool]] = None,
                  mostrar_detalle: bool = True,
-                 incluir_archivos_sueltos: bool = False):
+                 modo_origen: str = MODO_SOLO_CARPETAS):
         """
         Inicializa el organizador
 
@@ -32,9 +37,10 @@ class OrganizadorArchivos:
             callback_progreso: Función para actualizar progreso
             detener_callback: Función que retorna True si se debe detener
             mostrar_detalle: Si se deben mostrar logs detallados
-            incluir_archivos_sueltos: Si se deben organizar también los archivos
-                                       sueltos directamente en la ruta base (no
-                                       dentro de ninguna carpeta)
+            modo_origen: Qué elementos procesar, mutuamente excluyentes:
+                         "carpetas" (por defecto, ignora archivos sueltos),
+                         "sueltos" (ignora lo que hay dentro de carpetas) o
+                         "todos" (carpetas y sueltos)
         """
         self.ruta_base = ruta_base
         self.categorias = categorias
@@ -44,7 +50,7 @@ class OrganizadorArchivos:
         self.callback_progreso = callback_progreso or (lambda msg: None)
         self.detener_callback = detener_callback or (lambda: False)
         self.mostrar_detalle = mostrar_detalle
-        self.incluir_archivos_sueltos = incluir_archivos_sueltos
+        self.modo_origen = modo_origen
 
         # Mapa extensión -> id de categoría, para clasificar en una sola pasada
         self.mapa_extensiones: Dict[str, str] = {}
@@ -58,6 +64,13 @@ class OrganizadorArchivos:
 
     def _prefijos_activos(self) -> List[str]:
         return [c["prefijo"] for c in self.categorias]
+
+    def _descripcion_modo(self) -> str:
+        return {
+            MODO_SOLO_CARPETAS: "solo lo que está dentro de carpetas",
+            MODO_SOLO_SUELTOS: "solo archivos sueltos en la ruta base",
+            MODO_TODOS: "todos los archivos (carpetas y sueltos)",
+        }.get(self.modo_origen, self.modo_origen)
 
     def renombrar_carpetas(self, prefijo: str) -> Tuple[int, int]:
         """
@@ -118,14 +131,16 @@ class OrganizadorArchivos:
         otros_archivos: List[Path] = []
         carpetas_revisar = []
 
-        if self.incluir_archivos_sueltos:
-            self._log("📄 Incluyendo también los archivos sueltos en la ruta base")
+        self._log(f"📂 Modo de organización: {self._descripcion_modo()}")
 
         for item in sorted(self.ruta_base.iterdir()):
             if self._debe_detener():
                 break
 
             if item.is_dir():
+                if self.modo_origen == MODO_SOLO_SUELTOS:
+                    continue
+
                 carpeta = item
                 if carpeta.name == CARPETA_OTROS or any(
                         carpeta_pertenece_a_prefijo(carpeta.name, p) for p in prefijos_activos):
@@ -139,7 +154,10 @@ class OrganizadorArchivos:
                         archivos_por_categoria[id_categoria].append((archivo, archivo.stat().st_mtime))
                 otros_archivos.extend(sin_categoria)
 
-            elif self.incluir_archivos_sueltos and item.is_file():
+            elif item.is_file():
+                if self.modo_origen == MODO_SOLO_CARPETAS:
+                    continue
+
                 id_categoria = self.mapa_extensiones.get(item.suffix.lower())
                 if id_categoria:
                     archivos_por_categoria[id_categoria].append((item, item.stat().st_mtime))
@@ -189,14 +207,16 @@ class OrganizadorArchivos:
         todos_archivos: List[Tuple[Path, float]] = []
         carpetas_revisar = []
 
-        if self.incluir_archivos_sueltos:
-            self._log("📄 Incluyendo también los archivos sueltos en la ruta base")
+        self._log(f"📂 Modo de organización: {self._descripcion_modo()}")
 
         for item in sorted(self.ruta_base.iterdir()):
             if self._debe_detener():
                 break
 
             if item.is_dir():
+                if self.modo_origen == MODO_SOLO_SUELTOS:
+                    continue
+
                 carpeta = item
                 if carpeta.name == CARPETA_OTROS or carpeta_pertenece_a_prefijo(carpeta.name, prefijo):
                     continue
@@ -206,7 +226,9 @@ class OrganizadorArchivos:
                     if archivo.is_file():
                         todos_archivos.append((archivo, archivo.stat().st_mtime))
 
-            elif self.incluir_archivos_sueltos and item.is_file():
+            elif item.is_file():
+                if self.modo_origen == MODO_SOLO_CARPETAS:
+                    continue
                 todos_archivos.append((item, item.stat().st_mtime))
 
         if self._debe_detener():

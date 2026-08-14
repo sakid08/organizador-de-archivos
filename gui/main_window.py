@@ -34,7 +34,10 @@ class VentanaPrincipal:
         self.digitos = tk.IntVar(value=4)
         self.archivos_por_carpeta = tk.IntVar(value=600)
         self.mostrar_detalle = tk.BooleanVar(value=True)
-        self.incluir_archivos_sueltos = tk.BooleanVar(value=False)
+
+        # Qué elementos organizar: "carpetas" (por defecto), "sueltos" o "todos".
+        # Son mutuamente excluyentes.
+        self.modo_origen = tk.StringVar(value="carpetas")
 
         # Variable de la categoría elegida para "Solo renombrar carpetas"
         self.categoria_renombrado = tk.StringVar(value="")
@@ -162,6 +165,11 @@ class VentanaPrincipal:
                          font=(FONT_FAMILY, 10, "bold"))
         style.map("Card.TCheckbutton", background=[("active", COLOR_CARD)])
 
+        # Radiobutton
+        style.configure("TRadiobutton", background=COLOR_BG, foreground=COLOR_TEXT,
+                         font=(FONT_FAMILY, 10))
+        style.map("TRadiobutton", background=[("active", COLOR_BG)])
+
         # Progressbar
         style.configure("Modern.Horizontal.TProgressbar", troughcolor=COLOR_ACCENT_LIGHT,
                          background=COLOR_ACCENT, bordercolor=COLOR_ACCENT_LIGHT,
@@ -223,9 +231,15 @@ class VentanaPrincipal:
 
         ttk.Checkbutton(opciones_frame, text="Mostrar detalles del proceso",
                          variable=self.mostrar_detalle).pack(anchor="w")
-        ttk.Checkbutton(opciones_frame,
-                         text="Incluir también los archivos sueltos en la ruta base (no solo los de carpetas)",
-                         variable=self.incluir_archivos_sueltos).pack(anchor="w", pady=(6, 0))
+
+        ttk.Label(opciones_frame, text="¿Qué elementos organizar?",
+                  style="TLabel", font=(FONT_FAMILY, 10, "bold")).pack(anchor="w", pady=(12, 4))
+        ttk.Radiobutton(opciones_frame, text="Solo lo que está dentro de carpetas (ignora archivos sueltos)",
+                         variable=self.modo_origen, value="carpetas").pack(anchor="w")
+        ttk.Radiobutton(opciones_frame, text="Solo archivos sueltos en la ruta base (ignora carpetas)",
+                         variable=self.modo_origen, value="sueltos").pack(anchor="w", pady=(4, 0))
+        ttk.Radiobutton(opciones_frame, text="Todos los archivos (carpetas y sueltos)",
+                         variable=self.modo_origen, value="todos").pack(anchor="w", pady=(4, 0))
 
         # Frame de botones de acción
         self._crear_botones_accion(main_frame).grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(0, 16))

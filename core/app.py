@@ -11,6 +11,12 @@ from core.config import CATEGORIAS_DEFAULT
 from core.utils import normalizar_extensiones, generar_id_categoria
 from core.persistencia import cargar_categorias_personalizadas, guardar_categorias_personalizadas
 
+DESCRIPCION_MODOS_ORIGEN = {
+    "carpetas": "Solo lo que está dentro de carpetas",
+    "sueltos": "Solo archivos sueltos en la ruta base",
+    "todos": "Todos los archivos (carpetas y sueltos)",
+}
+
 class AppController:
     """Controlador de la aplicación"""
 
@@ -128,12 +134,12 @@ class AppController:
 
         ruta_base = self.ventana.ruta_base.get()
         nombres_categorias = ", ".join(c["nombre"] for c in categorias_activas)
-        incluir_sueltos = self.ventana.incluir_archivos_sueltos.get()
+        modo_origen = self.ventana.modo_origen.get()
         confirmar = messagebox.askyesno(
             "Confirmar organización",
             f"Se organizarán los archivos en:\n{ruta_base}\n\n"
             f"Categorías activas: {nombres_categorias}\n"
-            f"Incluir archivos sueltos: {'Sí' if incluir_sueltos else 'No'}\n\n"
+            f"Elementos a organizar: {DESCRIPCION_MODOS_ORIGEN.get(modo_origen, modo_origen)}\n\n"
             f"Esta acción moverá archivos y carpetas. ¿Deseas continuar?"
         )
         if not confirmar:
@@ -149,13 +155,13 @@ class AppController:
                 digitos = self.ventana.digitos.get()
                 archivos_por_carpeta = self.ventana.archivos_por_carpeta.get()
                 mostrar_detalle = self.ventana.mostrar_detalle.get()
-                incluir_archivos_sueltos = self.ventana.incluir_archivos_sueltos.get()
+                modo_origen = self.ventana.modo_origen.get()
 
                 self.agregar_log(f"Ruta base: {ruta_base}")
                 self.agregar_log(f"Categorías activas: {', '.join(c['nombre'] for c in categorias_activas)}")
                 self.agregar_log(f"Archivos por carpeta: {archivos_por_carpeta}")
                 self.agregar_log(f"Mostrar detalles: {mostrar_detalle}")
-                self.agregar_log(f"Incluir archivos sueltos en ruta base: {incluir_archivos_sueltos}")
+                self.agregar_log(f"Elementos a organizar: {DESCRIPCION_MODOS_ORIGEN.get(modo_origen, modo_origen)}")
 
                 organizador = OrganizadorArchivos(
                     ruta_base=ruta_base,
@@ -166,7 +172,7 @@ class AppController:
                     callback_progreso=self._actualizar_progreso,
                     detener_callback=self._debe_detener,
                     mostrar_detalle=mostrar_detalle,
-                    incluir_archivos_sueltos=incluir_archivos_sueltos
+                    modo_origen=modo_origen
                 )
 
                 estadisticas = organizador.organizar_archivos()
@@ -211,12 +217,12 @@ class AppController:
             return
 
         ruta_base = self.ventana.ruta_base.get()
-        incluir_sueltos = self.ventana.incluir_archivos_sueltos.get()
+        modo_origen = self.ventana.modo_origen.get()
         confirmar = messagebox.askyesno(
             "Confirmar agrupación general",
-            f"Se agruparán TODOS los archivos (sin distinguir tipo) en:\n{ruta_base}\n\n"
+            f"Se agruparán TODOS los tipos de archivo en:\n{ruta_base}\n\n"
             f"Prefijo de carpeta: '{prefijo}'\n"
-            f"Incluir archivos sueltos: {'Sí' if incluir_sueltos else 'No'}\n\n"
+            f"Elementos a organizar: {DESCRIPCION_MODOS_ORIGEN.get(modo_origen, modo_origen)}\n\n"
             f"Esta acción moverá archivos de todos los tipos. ¿Deseas continuar?"
         )
         if not confirmar:
@@ -232,12 +238,12 @@ class AppController:
                 digitos = self.ventana.digitos.get()
                 archivos_por_carpeta = self.ventana.archivos_por_carpeta.get()
                 mostrar_detalle = self.ventana.mostrar_detalle.get()
-                incluir_archivos_sueltos = self.ventana.incluir_archivos_sueltos.get()
+                modo_origen = self.ventana.modo_origen.get()
 
                 self.agregar_log(f"Ruta base: {ruta_base}")
                 self.agregar_log(f"Prefijo de carpeta: {prefijo}")
                 self.agregar_log(f"Archivos por carpeta: {archivos_por_carpeta}")
-                self.agregar_log(f"Incluir archivos sueltos en ruta base: {incluir_archivos_sueltos}")
+                self.agregar_log(f"Elementos a organizar: {DESCRIPCION_MODOS_ORIGEN.get(modo_origen, modo_origen)}")
 
                 organizador = OrganizadorArchivos(
                     ruta_base=ruta_base,
@@ -248,7 +254,7 @@ class AppController:
                     callback_progreso=self._actualizar_progreso,
                     detener_callback=self._debe_detener,
                     mostrar_detalle=mostrar_detalle,
-                    incluir_archivos_sueltos=incluir_archivos_sueltos
+                    modo_origen=modo_origen
                 )
 
                 resultado = organizador.organizar_todo(prefijo)
