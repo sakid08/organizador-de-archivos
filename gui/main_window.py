@@ -30,7 +30,7 @@ class VentanaPrincipal:
         self.root.configure(bg=COLOR_BG)
 
         # Variables de configuración generales
-        self.ruta_base = tk.StringVar(value="./")
+        self.ruta_base = tk.StringVar(value="")
         self.digitos = tk.IntVar(value=4)
         self.archivos_por_carpeta = tk.IntVar(value=600)
         self.mostrar_detalle = tk.BooleanVar(value=True)
@@ -272,26 +272,29 @@ class VentanaPrincipal:
         outer, inner = self._crear_card(parent, "Configuración general")
         inner.columnconfigure(1, weight=1)
 
-        # Ruta base
-        ttk.Label(inner, text="Ruta base", style="Card.TLabel").grid(
+        # Ruta base (obligatoria, sin valor por defecto)
+        ttk.Label(inner, text="Ruta base *", style="Card.TLabel").grid(
             row=1, column=0, sticky=tk.W, pady=8)
         ruta_entry = ttk.Entry(inner, textvariable=self.ruta_base)
         ruta_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(12, 8), pady=8)
         ttk.Button(inner, text="Examinar", style="Secondary.TButton",
                    command=self._seleccionar_ruta).grid(row=1, column=2, pady=8)
+        ttk.Label(inner, text="Obligatorio: debes seleccionar o escribir una ruta antes de organizar",
+                  style="Muted.Card.TLabel").grid(
+            row=2, column=0, columnspan=3, sticky=tk.W, padx=(0, 0), pady=(0, 4))
 
         # Dígitos
         ttk.Label(inner, text="Dígitos (0001)", style="Card.TLabel").grid(
-            row=2, column=0, sticky=tk.W, pady=8)
+            row=3, column=0, sticky=tk.W, pady=8)
         ttk.Spinbox(inner, from_=1, to=6, textvariable=self.digitos, width=10).grid(
-            row=2, column=1, sticky=tk.W, padx=(12, 8), pady=8)
+            row=3, column=1, sticky=tk.W, padx=(12, 8), pady=8)
 
         # Archivos por carpeta
         ttk.Label(inner, text="Archivos por carpeta", style="Card.TLabel").grid(
-            row=3, column=0, sticky=tk.W, pady=8)
+            row=4, column=0, sticky=tk.W, pady=8)
         ttk.Spinbox(inner, from_=100, to=2000, increment=100,
                     textvariable=self.archivos_por_carpeta, width=10).grid(
-            row=3, column=1, sticky=tk.W, padx=(12, 8), pady=8)
+            row=4, column=1, sticky=tk.W, padx=(12, 8), pady=8)
 
         return outer
 

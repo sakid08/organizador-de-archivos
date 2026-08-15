@@ -8,7 +8,7 @@ from tkinter import messagebox
 
 from core.organizador import OrganizadorArchivos
 from core.config import CATEGORIAS_DEFAULT
-from core.utils import normalizar_extensiones, generar_id_categoria
+from core.utils import normalizar_extensiones, generar_id_categoria, validar_ruta
 from core.persistencia import cargar_categorias_personalizadas, guardar_categorias_personalizadas
 
 DESCRIPCION_MODOS_ORIGEN = {
@@ -48,6 +48,17 @@ class AppController:
         self.ventana.set_progress_label("Proceso finalizado")
         self.ventana.set_status("Listo")
 
+    def _validar_ruta_base(self) -> bool:
+        """Verifica que el usuario haya introducido una ruta base (no puede quedar vacía ni por defecto)"""
+        ruta_texto = self.ventana.ruta_base.get().strip()
+        if not ruta_texto:
+            messagebox.showwarning("Ruta requerida", "Debes indicar una ruta base antes de continuar")
+            return False
+        if not validar_ruta(ruta_texto):
+            messagebox.showwarning("Ruta inválida", f"La ruta indicada no existe o no es accesible:\n{ruta_texto}")
+            return False
+        return True
+
     def _categorias_activas(self):
         """Construye la lista de categorías activas con sus prefijos actuales"""
         activas = []
@@ -66,6 +77,9 @@ class AppController:
         """Inicia el proceso de renombrado de carpetas de una categoría"""
         if self.proceso_activo:
             messagebox.showwarning("Proceso activo", "Ya hay un proceso en ejecución")
+            return
+
+        if not self._validar_ruta_base():
             return
 
         prefijo = self.ventana.categoria_renombrado_seleccionada()
@@ -125,6 +139,9 @@ class AppController:
         """Inicia el proceso de organización de archivos"""
         if self.proceso_activo:
             messagebox.showwarning("Proceso activo", "Ya hay un proceso en ejecución")
+            return
+
+        if not self._validar_ruta_base():
             return
 
         categorias_activas = self._categorias_activas()
@@ -209,6 +226,9 @@ class AppController:
         sin distinguir por tipo/extensión ni usar las categorías configuradas"""
         if self.proceso_activo:
             messagebox.showwarning("Proceso activo", "Ya hay un proceso en ejecución")
+            return
+
+        if not self._validar_ruta_base():
             return
 
         prefijo = self.ventana.prefijo_general.get().strip()
