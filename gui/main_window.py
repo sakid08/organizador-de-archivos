@@ -39,6 +39,14 @@ class VentanaPrincipal:
         # Son mutuamente excluyentes.
         self.modo_origen = tk.StringVar(value="carpetas")
 
+        # Orden para distribuir los archivos en las carpetas numeradas:
+        # "fecha" (por defecto), "nombre_az" o "nombre_za". Mutuamente excluyentes.
+        self.orden_archivos = tk.StringVar(value="fecha")
+
+        # Método de agrupamiento de las carpetas numeradas: "cantidad" (por defecto),
+        # "anio", "mes" o "letra". Mutuamente excluyentes.
+        self.agrupamiento = tk.StringVar(value="cantidad")
+
         # Variable de la categoría elegida para "Solo renombrar carpetas"
         self.categoria_renombrado = tk.StringVar(value="")
 
@@ -240,6 +248,26 @@ class VentanaPrincipal:
                          variable=self.modo_origen, value="sueltos").pack(anchor="w", pady=(4, 0))
         ttk.Radiobutton(opciones_frame, text="Todos los archivos (carpetas y sueltos)",
                          variable=self.modo_origen, value="todos").pack(anchor="w", pady=(4, 0))
+
+        ttk.Label(opciones_frame, text="¿En qué orden agrupar los archivos?",
+                  style="TLabel", font=(FONT_FAMILY, 10, "bold")).pack(anchor="w", pady=(12, 4))
+        ttk.Radiobutton(opciones_frame, text="Fecha (más antiguo primero)",
+                         variable=self.orden_archivos, value="fecha").pack(anchor="w")
+        ttk.Radiobutton(opciones_frame, text="Nombre (A-Z)",
+                         variable=self.orden_archivos, value="nombre_az").pack(anchor="w", pady=(4, 0))
+        ttk.Radiobutton(opciones_frame, text="Nombre (Z-A)",
+                         variable=self.orden_archivos, value="nombre_za").pack(anchor="w", pady=(4, 0))
+
+        ttk.Label(opciones_frame, text="¿Cómo agrupar las carpetas?",
+                  style="TLabel", font=(FONT_FAMILY, 10, "bold")).pack(anchor="w", pady=(12, 4))
+        ttk.Radiobutton(opciones_frame, text="Por cantidad (según 'Archivos por carpeta')",
+                         variable=self.agrupamiento, value="cantidad").pack(anchor="w")
+        ttk.Radiobutton(opciones_frame, text="Por año (ej: Prefijo 2020 0001)",
+                         variable=self.agrupamiento, value="anio").pack(anchor="w", pady=(4, 0))
+        ttk.Radiobutton(opciones_frame, text="Por mes (ej: Prefijo 2020-05 0001)",
+                         variable=self.agrupamiento, value="mes").pack(anchor="w", pady=(4, 0))
+        ttk.Radiobutton(opciones_frame, text="Por letra inicial del nombre (ej: Prefijo A 0001)",
+                         variable=self.agrupamiento, value="letra").pack(anchor="w", pady=(4, 0))
 
         # Frame de botones de acción
         self._crear_botones_accion(main_frame).grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(0, 16))

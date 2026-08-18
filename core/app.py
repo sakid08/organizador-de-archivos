@@ -17,6 +17,19 @@ DESCRIPCION_MODOS_ORIGEN = {
     "todos": "Todos los archivos (carpetas y sueltos)",
 }
 
+DESCRIPCION_ORDEN = {
+    "fecha": "Fecha (más antiguo primero)",
+    "nombre_az": "Nombre (A-Z)",
+    "nombre_za": "Nombre (Z-A)",
+}
+
+DESCRIPCION_AGRUPAMIENTO = {
+    "cantidad": "Por cantidad (según 'Archivos por carpeta')",
+    "anio": "Por año",
+    "mes": "Por mes",
+    "letra": "Por letra inicial del nombre",
+}
+
 class AppController:
     """Controlador de la aplicación"""
 
@@ -152,11 +165,15 @@ class AppController:
         ruta_base = self.ventana.ruta_base.get()
         nombres_categorias = ", ".join(c["nombre"] for c in categorias_activas)
         modo_origen = self.ventana.modo_origen.get()
+        orden = self.ventana.orden_archivos.get()
+        agrupamiento = self.ventana.agrupamiento.get()
         confirmar = messagebox.askyesno(
             "Confirmar organización",
             f"Se organizarán los archivos en:\n{ruta_base}\n\n"
             f"Categorías activas: {nombres_categorias}\n"
-            f"Elementos a organizar: {DESCRIPCION_MODOS_ORIGEN.get(modo_origen, modo_origen)}\n\n"
+            f"Elementos a organizar: {DESCRIPCION_MODOS_ORIGEN.get(modo_origen, modo_origen)}\n"
+            f"Orden: {DESCRIPCION_ORDEN.get(orden, orden)}\n"
+            f"Agrupamiento: {DESCRIPCION_AGRUPAMIENTO.get(agrupamiento, agrupamiento)}\n\n"
             f"Esta acción moverá archivos y carpetas. ¿Deseas continuar?"
         )
         if not confirmar:
@@ -173,12 +190,16 @@ class AppController:
                 archivos_por_carpeta = self.ventana.archivos_por_carpeta.get()
                 mostrar_detalle = self.ventana.mostrar_detalle.get()
                 modo_origen = self.ventana.modo_origen.get()
+                orden = self.ventana.orden_archivos.get()
+                agrupamiento = self.ventana.agrupamiento.get()
 
                 self.agregar_log(f"Ruta base: {ruta_base}")
                 self.agregar_log(f"Categorías activas: {', '.join(c['nombre'] for c in categorias_activas)}")
                 self.agregar_log(f"Archivos por carpeta: {archivos_por_carpeta}")
                 self.agregar_log(f"Mostrar detalles: {mostrar_detalle}")
                 self.agregar_log(f"Elementos a organizar: {DESCRIPCION_MODOS_ORIGEN.get(modo_origen, modo_origen)}")
+                self.agregar_log(f"Orden: {DESCRIPCION_ORDEN.get(orden, orden)}")
+                self.agregar_log(f"Agrupamiento: {DESCRIPCION_AGRUPAMIENTO.get(agrupamiento, agrupamiento)}")
 
                 organizador = OrganizadorArchivos(
                     ruta_base=ruta_base,
@@ -189,7 +210,9 @@ class AppController:
                     callback_progreso=self._actualizar_progreso,
                     detener_callback=self._debe_detener,
                     mostrar_detalle=mostrar_detalle,
-                    modo_origen=modo_origen
+                    modo_origen=modo_origen,
+                    orden=orden,
+                    agrupamiento=agrupamiento
                 )
 
                 estadisticas = organizador.organizar_archivos()
@@ -238,11 +261,15 @@ class AppController:
 
         ruta_base = self.ventana.ruta_base.get()
         modo_origen = self.ventana.modo_origen.get()
+        orden = self.ventana.orden_archivos.get()
+        agrupamiento = self.ventana.agrupamiento.get()
         confirmar = messagebox.askyesno(
             "Confirmar agrupación general",
             f"Se agruparán TODOS los tipos de archivo en:\n{ruta_base}\n\n"
             f"Prefijo de carpeta: '{prefijo}'\n"
-            f"Elementos a organizar: {DESCRIPCION_MODOS_ORIGEN.get(modo_origen, modo_origen)}\n\n"
+            f"Elementos a organizar: {DESCRIPCION_MODOS_ORIGEN.get(modo_origen, modo_origen)}\n"
+            f"Orden: {DESCRIPCION_ORDEN.get(orden, orden)}\n"
+            f"Agrupamiento: {DESCRIPCION_AGRUPAMIENTO.get(agrupamiento, agrupamiento)}\n\n"
             f"Esta acción moverá archivos de todos los tipos. ¿Deseas continuar?"
         )
         if not confirmar:
@@ -259,11 +286,15 @@ class AppController:
                 archivos_por_carpeta = self.ventana.archivos_por_carpeta.get()
                 mostrar_detalle = self.ventana.mostrar_detalle.get()
                 modo_origen = self.ventana.modo_origen.get()
+                orden = self.ventana.orden_archivos.get()
+                agrupamiento = self.ventana.agrupamiento.get()
 
                 self.agregar_log(f"Ruta base: {ruta_base}")
                 self.agregar_log(f"Prefijo de carpeta: {prefijo}")
                 self.agregar_log(f"Archivos por carpeta: {archivos_por_carpeta}")
                 self.agregar_log(f"Elementos a organizar: {DESCRIPCION_MODOS_ORIGEN.get(modo_origen, modo_origen)}")
+                self.agregar_log(f"Orden: {DESCRIPCION_ORDEN.get(orden, orden)}")
+                self.agregar_log(f"Agrupamiento: {DESCRIPCION_AGRUPAMIENTO.get(agrupamiento, agrupamiento)}")
 
                 organizador = OrganizadorArchivos(
                     ruta_base=ruta_base,
@@ -274,7 +305,9 @@ class AppController:
                     callback_progreso=self._actualizar_progreso,
                     detener_callback=self._debe_detener,
                     mostrar_detalle=mostrar_detalle,
-                    modo_origen=modo_origen
+                    modo_origen=modo_origen,
+                    orden=orden,
+                    agrupamiento=agrupamiento
                 )
 
                 resultado = organizador.organizar_todo(prefijo)
