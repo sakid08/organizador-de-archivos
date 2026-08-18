@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import List, Optional
 
-from gui.main_window import COLOR_BG, COLOR_CARD, COLOR_BORDER, COLOR_TEXT, FONT_FAMILY
+from gui.estilos import COLOR_BG, COLOR_CARD, COLOR_BORDER, COLOR_TEXT, FONT_FAMILY
 
 class DialogoExtensiones:
     """Diálogo para editar extensiones de archivos"""

@@ -1,27 +1,15 @@
 """Lógica de organización y renombrado de archivos"""
 
-import datetime
 from pathlib import Path
 import shutil
 from typing import List, Tuple, Callable, Optional, Dict
+
 from core.utils import crear_nombre_unico, clasificar_archivos_carpeta, carpeta_pertenece_a_prefijo
 from core.config import CARPETA_OTROS
+from core.modos import MODO_SOLO_CARPETAS, MODO_SOLO_SUELTOS, descripcion_modo
+from core.orden import ORDEN_FECHA, ORDEN_NOMBRE_ZA, descripcion_orden, ordenar_archivos
+from core.agrupamiento import AGRUPAR_CANTIDAD, AGRUPAR_LETRA, descripcion_agrupamiento, clave_grupo
 
-# Modos mutuamente excluyentes para decidir qué elementos procesar
-MODO_SOLO_CARPETAS = "carpetas"
-MODO_SOLO_SUELTOS = "sueltos"
-MODO_TODOS = "todos"
-
-# Criterios de orden para distribuir los archivos en las carpetas numeradas
-ORDEN_FECHA = "fecha"
-ORDEN_NOMBRE_AZ = "nombre_az"
-ORDEN_NOMBRE_ZA = "nombre_za"
-
-# Métodos de agrupamiento: cómo se reparten los archivos ya ordenados entre carpetas
-AGRUPAR_CANTIDAD = "cantidad"
-AGRUPAR_ANIO = "anio"
-AGRUPAR_MES = "mes"
-AGRUPAR_LETRA = "letra"
 
 class OrganizadorArchivos:
     """Clase encargada de la lógica de organización de archivos por categorías"""
@@ -51,18 +39,9 @@ class OrganizadorArchivos:
             callback_progreso: Función para actualizar progreso
             detener_callback: Función que retorna True si se debe detener
             mostrar_detalle: Si se deben mostrar logs detallados
-            modo_origen: Qué elementos procesar, mutuamente excluyentes:
-                         "carpetas" (por defecto, ignora archivos sueltos),
-                         "sueltos" (ignora lo que hay dentro de carpetas) o
-                         "todos" (carpetas y sueltos)
-            orden: Criterio para distribuir los archivos en las carpetas numeradas:
-                   "fecha" (por defecto, más antiguo primero), "nombre_az" o "nombre_za"
-            agrupamiento: Cómo repartir los archivos ya ordenados entre carpetas numeradas:
-                          "cantidad" (por defecto, llena carpetas hasta 'archivos_por_carpeta'
-                          y usa "{prefijo} {numero}"), "anio" (una carpeta por año, usa
-                          "{prefijo} {año} {numero}"), "mes" (una por año-mes, usa
-                          "{prefijo} {año}-{mes} {numero}") o "letra" (una por letra inicial
-                          del nombre, usa "{prefijo} {LETRA} {numero}")
+            modo_origen: Qué elementos procesar (ver core.modos)
+            orden: Criterio para distribuir los archivos (ver core.orden)
+            agrupamiento: Cómo repartir los archivos ya ordenados (ver core.agrupamiento)
         """
         self.ruta_base = ruta_base
         self.categorias = categorias
@@ -89,56 +68,10 @@ class OrganizadorArchivos:
     def _prefijos_activos(self) -> List[str]:
         return [c["prefijo"] for c in self.categorias]
 
-    def _descripcion_modo(self) -> str:
-        return {
-            MODO_SOLO_CARPETAS: "solo lo que está dentro de carpetas",
-            MODO_SOLO_SUELTOS: "solo archivos sueltos en la ruta base",
-            MODO_TODOS: "todos los archivos (carpetas y sueltos)",
-        }.get(self.modo_origen, self.modo_origen)
-
-    def _descripcion_orden(self) -> str:
-        return {
-            ORDEN_FECHA: "por fecha (más antiguo primero)",
-            ORDEN_NOMBRE_AZ: "por nombre (A-Z)",
-            ORDEN_NOMBRE_ZA: "por nombre (Z-A)",
-        }.get(self.orden, self.orden)
-
-    def _descripcion_agrupamiento(self) -> str:
-        return {
-            AGRUPAR_CANTIDAD: "por cantidad (según 'archivos por carpeta')",
-            AGRUPAR_ANIO: "por año",
-            AGRUPAR_MES: "por mes",
-            AGRUPAR_LETRA: "por letra inicial",
-        }.get(self.agrupamiento, self.agrupamiento)
-
-    def _clave_anio(self, mtime: float) -> str:
-        return datetime.datetime.fromtimestamp(mtime).strftime("%Y")
-
-    def _clave_mes(self, mtime: float) -> str:
-        return datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m")
-
-    def _clave_letra(self, nombre_archivo: str) -> str:
-        primer_caracter = nombre_archivo[:1].upper()
-        return primer_caracter if primer_caracter.isalpha() else "#"
-
-    def _clave_grupo(self, ruta_archivo: Path, mtime: float) -> Optional[str]:
-        """Devuelve la clave de agrupamiento de un archivo, o None si es agrupamiento por cantidad"""
-        if self.agrupamiento == AGRUPAR_ANIO:
-            return self._clave_anio(mtime)
-        if self.agrupamiento == AGRUPAR_MES:
-            return self._clave_mes(mtime)
-        if self.agrupamiento == AGRUPAR_LETRA:
-            return self._clave_letra(ruta_archivo.name)
-        return None
-
-    def _ordenar_archivos(self, archivos: List[Tuple[Path, float]]) -> None:
-        """Ordena in-place la lista de archivos (ruta, mtime) según el criterio configurado"""
-        if self.orden == ORDEN_NOMBRE_AZ:
-            archivos.sort(key=lambda x: x[0].name.lower())
-        elif self.orden == ORDEN_NOMBRE_ZA:
-            archivos.sort(key=lambda x: x[0].name.lower(), reverse=True)
-        else:
-            archivos.sort(key=lambda x: x[1])
+    def _log_configuracion(self):
+        self._log(f"📂 Modo de organización: {descripcion_modo(self.modo_origen)}")
+        self._log(f"🔤 Orden de los archivos: {descripcion_orden(self.orden)}")
+        self._log(f"🗂️ Agrupamiento: {descripcion_agrupamiento(self.agrupamiento)}")
 
     def renombrar_carpetas(self, prefijo: str) -> Tuple[int, int]:
         """
@@ -199,9 +132,7 @@ class OrganizadorArchivos:
         otros_archivos: List[Path] = []
         carpetas_revisar = []
 
-        self._log(f"📂 Modo de organización: {self._descripcion_modo()}")
-        self._log(f"🔤 Orden de los archivos: {self._descripcion_orden()}")
-        self._log(f"🗂️ Agrupamiento: {self._descripcion_agrupamiento()}")
+        self._log_configuracion()
 
         for item in sorted(self.ruta_base.iterdir()):
             if self._debe_detener():
@@ -277,9 +208,7 @@ class OrganizadorArchivos:
         todos_archivos: List[Tuple[Path, float]] = []
         carpetas_revisar = []
 
-        self._log(f"📂 Modo de organización: {self._descripcion_modo()}")
-        self._log(f"🔤 Orden de los archivos: {self._descripcion_orden()}")
-        self._log(f"🗂️ Agrupamiento: {self._descripcion_agrupamiento()}")
+        self._log_configuracion()
 
         for item in sorted(self.ruta_base.iterdir()):
             if self._debe_detener():
@@ -340,7 +269,7 @@ class OrganizadorArchivos:
 
     def _mover_categoria(self, categoria: dict, archivos: List[Tuple[Path, float]]):
         """Organiza los archivos de una categoría en carpetas numeradas con su propio prefijo"""
-        self._ordenar_archivos(archivos)
+        ordenar_archivos(archivos, self.orden)
 
         nombre = categoria["nombre"]
         prefijo = categoria["prefijo"]
@@ -392,7 +321,7 @@ class OrganizadorArchivos:
         grupos: Dict[str, List[Tuple[Path, float]]] = {}
         for item in archivos:
             ruta_archivo, mtime = item
-            clave = self._clave_grupo(ruta_archivo, mtime)
+            clave = clave_grupo(self.agrupamiento, ruta_archivo, mtime)
             grupos.setdefault(clave, []).append(item)
 
         # Los grupos por letra respetan el sentido A-Z/Z-A elegido; año y mes siempre cronológicos
