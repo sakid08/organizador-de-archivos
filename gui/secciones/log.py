@@ -3,7 +3,8 @@
 import tkinter as tk
 from tkinter import scrolledtext
 
-from gui.estilos import COLOR_BORDER, COLOR_CARD, COLOR_TEXT, COLOR_INFO, COLOR_SUCCESS, COLOR_ERROR, COLOR_WARNING
+from gui import estilos
+from gui.estilos import COLOR_BORDER, COLOR_CARD, COLOR_TEXT
 
 
 class LogMixin:
@@ -15,6 +16,7 @@ class LogMixin:
         inner.columnconfigure(0, weight=1)
 
         log_border = tk.Frame(inner, bg=COLOR_BORDER)
+        estilos.registrar_widget(log_border, bg="BORDER")
         log_border.grid(row=1, column=0, sticky=(tk.W, tk.E))
 
         self.log_text = scrolledtext.ScrolledText(
@@ -22,12 +24,13 @@ class LogMixin:
             bg=COLOR_CARD, fg=COLOR_TEXT, insertbackground=COLOR_TEXT,
             relief="flat", borderwidth=0, padx=10, pady=8)
         self.log_text.pack(fill="both", expand=True, padx=1, pady=1)
+        estilos.registrar_widget(self.log_text, bg="CARD", fg="TEXT", insertbackground="TEXT")
 
         # Configurar colores para el log
-        self.log_text.tag_config("INFO", foreground=COLOR_INFO)
-        self.log_text.tag_config("SUCCESS", foreground=COLOR_SUCCESS)
-        self.log_text.tag_config("ERROR", foreground=COLOR_ERROR)
-        self.log_text.tag_config("WARNING", foreground=COLOR_WARNING)
+        estilos.registrar_tag(self.log_text, "INFO", "INFO")
+        estilos.registrar_tag(self.log_text, "SUCCESS", "SUCCESS")
+        estilos.registrar_tag(self.log_text, "ERROR", "ERROR")
+        estilos.registrar_tag(self.log_text, "WARNING", "WARNING")
 
         return outer
 

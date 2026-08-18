@@ -10,6 +10,7 @@ def main():
     root.title(VENTANA_TITULO)
     root.geometry(VENTANA_DIMENSIONES)
     root.resizable(True, True)
+    root.state("zoomed")
     
     # Crear ventana principal (sin controller aún)
     ventana = VentanaPrincipal(root, None)

@@ -5,7 +5,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import List, Optional
 
-from gui.estilos import COLOR_BG, COLOR_CARD, COLOR_BORDER, COLOR_TEXT, FONT_FAMILY
+from gui import estilos
+from gui.estilos import FONT_FAMILY
 
 class DialogoExtensiones:
     """Diálogo para editar extensiones de archivos"""
@@ -19,7 +20,7 @@ class DialogoExtensiones:
         self.ventana = tk.Toplevel(parent)
         self.ventana.title(titulo)
         self.ventana.geometry("420x320")
-        self.ventana.configure(bg=COLOR_BG)
+        self.ventana.configure(bg=estilos.COLOR_BG)
         self.ventana.transient(parent)
         self.ventana.grab_set()
 
@@ -36,10 +37,10 @@ class DialogoExtensiones:
         ttk.Label(frame, text="Separadas por comas", style="Subtitle.TLabel").pack(
             anchor="w", pady=(2, 16))
 
-        text_border = tk.Frame(frame, bg=COLOR_BORDER)
+        text_border = tk.Frame(frame, bg=estilos.COLOR_BORDER)
         text_border.pack(fill="both", expand=True, pady=(0, 16))
         self.texto_ext = tk.Text(text_border, height=5, width=40, font=(FONT_FAMILY, 10),
-                                  bg=COLOR_CARD, fg=COLOR_TEXT, relief="flat",
+                                  bg=estilos.COLOR_CARD, fg=estilos.COLOR_TEXT, relief="flat",
                                   borderwidth=0, padx=10, pady=8)
         self.texto_ext.pack(fill="both", expand=True, padx=1, pady=1)
         self.texto_ext.insert("1.0", ", ".join(self.extensiones))
@@ -76,7 +77,7 @@ class DialogoNuevaCategoria:
         self.ventana = tk.Toplevel(parent)
         self.ventana.title("Nueva categoría personalizada")
         self.ventana.geometry("440x400")
-        self.ventana.configure(bg=COLOR_BG)
+        self.ventana.configure(bg=estilos.COLOR_BG)
         self.ventana.transient(parent)
         self.ventana.grab_set()
 
@@ -101,10 +102,10 @@ class DialogoNuevaCategoria:
         ttk.Entry(frame, textvariable=self.prefijo_var).pack(fill="x", pady=(4, 12))
 
         ttk.Label(frame, text="Extensiones (separadas por comas)", style="TLabel").pack(anchor="w")
-        text_border = tk.Frame(frame, bg=COLOR_BORDER)
+        text_border = tk.Frame(frame, bg=estilos.COLOR_BORDER)
         text_border.pack(fill="both", expand=True, pady=(4, 16))
         self.texto_ext = tk.Text(text_border, height=4, width=40, font=(FONT_FAMILY, 10),
-                                  bg=COLOR_CARD, fg=COLOR_TEXT, relief="flat",
+                                  bg=estilos.COLOR_CARD, fg=estilos.COLOR_TEXT, relief="flat",
                                   borderwidth=0, padx=10, pady=8)
         self.texto_ext.pack(fill="both", expand=True, padx=1, pady=1)
 

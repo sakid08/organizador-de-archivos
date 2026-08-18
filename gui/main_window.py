@@ -1,7 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
 
-from gui.estilos import aplicar_estilos, COLOR_BG, COLOR_BORDER, FONT_FAMILY
+from gui import estilos
+from gui.estilos import aplicar_estilos, COLOR_BG, COLOR_BORDER, FONT_FAMILY, NOMBRES_TEMAS
 from gui.secciones.configuracion import ConfiguracionMixin
 from gui.secciones.categorias import CategoriasMixin
 from gui.secciones.opciones import OpcionesMixin
@@ -19,6 +20,10 @@ class VentanaPrincipal(ConfiguracionMixin, CategoriasMixin, OpcionesMixin,
         self.app_controller = app_controller
 
         self.root.configure(bg=COLOR_BG)
+        estilos.registrar_widget(self.root, bg="BG")
+
+        # Tema visual activo: "claro" (por defecto), "gris" u "oscuro"
+        self.tema_var = tk.StringVar(value=NOMBRES_TEMAS[estilos.TEMA_ACTUAL])
 
         # Variables de configuración generales
         self.ruta_base = tk.StringVar(value="")
@@ -81,6 +86,7 @@ class VentanaPrincipal(ConfiguracionMixin, CategoriasMixin, OpcionesMixin,
 
         # Canvas + scrollbar para que la ventana sea desplazable con muchas categorías
         canvas = tk.Canvas(self.root, bg=COLOR_BG, highlightthickness=0)
+        estilos.registrar_widget(canvas, bg="BG")
         scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=canvas.yview)
         canvas.configure(yscrollcommand=scrollbar.set)
         canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -108,10 +114,22 @@ class VentanaPrincipal(ConfiguracionMixin, CategoriasMixin, OpcionesMixin,
         # Encabezado
         header_frame = ttk.Frame(main_frame, style="TFrame")
         header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 18))
-        ttk.Label(header_frame, text="Organizador de Archivos",
+        header_frame.columnconfigure(0, weight=1)
+
+        titulos_frame = ttk.Frame(header_frame, style="TFrame")
+        titulos_frame.grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(titulos_frame, text="Organizador de Archivos",
                   style="Title.TLabel").pack(anchor="w")
-        ttk.Label(header_frame, text="Organiza imágenes, videos, documentos y más, automáticamente",
+        ttk.Label(titulos_frame, text="Organiza imágenes, videos, documentos y más, automáticamente",
                   style="Subtitle.TLabel").pack(anchor="w", pady=(2, 0))
+
+        tema_frame = ttk.Frame(header_frame, style="TFrame")
+        tema_frame.grid(row=0, column=1, sticky=tk.NE)
+        ttk.Label(tema_frame, text="Tema", style="TLabel").pack(side=tk.LEFT, padx=(0, 6))
+        combo_tema = ttk.Combobox(tema_frame, textvariable=self.tema_var, state="readonly",
+                                   values=list(NOMBRES_TEMAS.values()), width=8)
+        combo_tema.pack(side=tk.LEFT)
+        combo_tema.bind("<<ComboboxSelected>>", self._cambiar_tema)
 
         # Frame de configuración general
         config_frame = self._crear_frame_configuracion(main_frame)
@@ -140,9 +158,18 @@ class VentanaPrincipal(ConfiguracionMixin, CategoriasMixin, OpcionesMixin,
                                      font=(FONT_FAMILY, 9), anchor="w")
         self.status_bar.pack(fill="x", padx=4, pady=6)
 
+    def _cambiar_tema(self, event=None):
+        """Cambia el tema visual de la aplicación según lo elegido en el combobox"""
+        nombre_mostrado = self.tema_var.get()
+        for clave, nombre in NOMBRES_TEMAS.items():
+            if nombre == nombre_mostrado:
+                estilos.cambiar_tema(self.root, clave)
+                break
+
     def _crear_card(self, parent, titulo=None):
         """Crea un contenedor tipo 'card' con borde sutil. Compartido por todas las secciones"""
         outer = tk.Frame(parent, bg=COLOR_BORDER)
+        estilos.registrar_widget(outer, bg="BORDER")
         inner = ttk.Frame(outer, padding="16", style="Card.TFrame")
         inner.pack(fill="both", expand=True, padx=1, pady=1)
         if titulo:
