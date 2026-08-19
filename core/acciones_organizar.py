@@ -2,21 +2,34 @@
 
 import threading
 from pathlib import Path
-from tkinter import messagebox
 
-from core.organizador import OrganizadorArchivos
+from core.organizador import OrganizadorArchivos, eliminar_marcadores
 from core.modos import DESCRIPCION_MODOS
 from core.orden import DESCRIPCION_ORDEN
 from core.agrupamiento import DESCRIPCION_AGRUPAMIENTO
+from gui.dialogs import mostrar_advertencia, mostrar_error, mostrar_info, confirmar
 
 
 class OrganizarMixin:
     """Mezclado en AppController: acciones de organizar, renombrar y agrupar todo"""
 
+    def _preguntar_eliminar_marcadores(self, ruta_base: Path):
+        """Ofrece borrar los archivos ocultos marcadores recién dejados en las carpetas"""
+        if confirmar(
+            self.ventana.root, "Archivos ocultos marcadores",
+            "El organizador dejó un archivo oculto dentro de cada carpeta que creó o "
+            "renombró, para reconocerlas en corridas futuras y no volver a mezclar su "
+            "contenido.\n\n¿Deseas eliminar esos archivos ocultos ahora?\n\n"
+            "Si los eliminas, una futura organización sobre esta misma ruta podría "
+            "volver a escanear esas carpetas."
+        ):
+            eliminados = eliminar_marcadores(ruta_base)
+            self.agregar_log(f"🗑 Archivos ocultos marcadores eliminados: {eliminados}", "INFO")
+
     def iniciar_renombrado(self):
         """Inicia el proceso de renombrado de carpetas de una categoría"""
         if self.proceso_activo:
-            messagebox.showwarning("Proceso activo", "Ya hay un proceso en ejecución")
+            mostrar_advertencia(self.ventana.root, "Proceso activo", "Ya hay un proceso en ejecución")
             return
 
         if not self._validar_ruta_base():
@@ -24,16 +37,15 @@ class OrganizarMixin:
 
         prefijo = self.ventana.categoria_renombrado_seleccionada()
         if not prefijo:
-            messagebox.showwarning("Sin categoría", "Selecciona una categoría activa para renombrar")
+            mostrar_advertencia(self.ventana.root, "Sin categoría", "Selecciona una categoría activa para renombrar")
             return
 
         ruta_base = self.ventana.ruta_base.get()
-        confirmar = messagebox.askyesno(
-            "Confirmar renombrado",
+        if not confirmar(
+            self.ventana.root, "Confirmar renombrado",
             f"Se renombrarán las carpetas existentes en:\n{ruta_base}\n\n"
             f"usando el prefijo '{prefijo}'.\n\n¿Deseas continuar?"
-        )
-        if not confirmar:
+        ):
             return
 
         def ejecutar_renombrado():
@@ -56,7 +68,8 @@ class OrganizarMixin:
                     callback_log=self.agregar_log,
                     callback_progreso=self._actualizar_progreso,
                     detener_callback=self._debe_detener,
-                    mostrar_detalle=self.ventana.mostrar_detalle.get()
+                    mostrar_detalle=self.ventana.mostrar_detalle.get(),
+                    exclusiones=self.ventana.exclusiones_lista()
                 )
 
                 procesadas, renombradas = organizador.renombrar_carpetas(prefijo)
@@ -66,10 +79,12 @@ class OrganizarMixin:
 
                 if not self.proceso_activo:
                     self.agregar_log("⚠ Proceso detenido por el usuario", "WARNING")
+                elif renombradas:
+                    self._preguntar_eliminar_marcadores(ruta_base)
 
             except Exception as e:
                 self.agregar_log(f"❌ Error fatal: {e}", "ERROR")
-                messagebox.showerror("Error", f"Ocurrió un error:\n{e}")
+                mostrar_error(self.ventana.root, "Error", f"Ocurrió un error:\n{e}")
             finally:
                 self._finalizar_proceso()
 
@@ -78,7 +93,7 @@ class OrganizarMixin:
     def iniciar_organizacion(self):
         """Inicia el proceso de organización de archivos"""
         if self.proceso_activo:
-            messagebox.showwarning("Proceso activo", "Ya hay un proceso en ejecución")
+            mostrar_advertencia(self.ventana.root, "Proceso activo", "Ya hay un proceso en ejecución")
             return
 
         if not self._validar_ruta_base():
@@ -86,7 +101,7 @@ class OrganizarMixin:
 
         categorias_activas = self._categorias_activas()
         if not categorias_activas:
-            messagebox.showwarning("Sin categorías", "Activa al menos una categoría para organizar")
+            mostrar_advertencia(self.ventana.root, "Sin categorías", "Activa al menos una categoría para organizar")
             return
 
         ruta_base = self.ventana.ruta_base.get()
@@ -94,16 +109,15 @@ class OrganizarMixin:
         modo_origen = self.ventana.modo_origen.get()
         orden = self.ventana.orden_archivos.get()
         agrupamiento = self.ventana.agrupamiento.get()
-        confirmar = messagebox.askyesno(
-            "Confirmar organización",
+        if not confirmar(
+            self.ventana.root, "Confirmar organización",
             f"Se organizarán los archivos en:\n{ruta_base}\n\n"
             f"Categorías activas: {nombres_categorias}\n"
             f"Elementos a organizar: {DESCRIPCION_MODOS.get(modo_origen, modo_origen)}\n"
             f"Orden: {DESCRIPCION_ORDEN.get(orden, orden)}\n"
             f"Agrupamiento: {DESCRIPCION_AGRUPAMIENTO.get(agrupamiento, agrupamiento)}\n\n"
             f"Esta acción moverá archivos y carpetas. ¿Deseas continuar?"
-        )
-        if not confirmar:
+        ):
             return
 
         def ejecutar_organizacion():
@@ -139,7 +153,8 @@ class OrganizarMixin:
                     mostrar_detalle=mostrar_detalle,
                     modo_origen=modo_origen,
                     orden=orden,
-                    agrupamiento=agrupamiento
+                    agrupamiento=agrupamiento,
+                    exclusiones=self.ventana.exclusiones_lista()
                 )
 
                 estadisticas = organizador.organizar_archivos()
@@ -158,14 +173,15 @@ class OrganizarMixin:
                     resumen = "\n".join(
                         f"{c['nombre']}: {estadisticas.get(c['id'], 0)}" for c in categorias_activas
                     )
-                    messagebox.showinfo("Completado",
+                    mostrar_info(self.ventana.root, "Completado",
                         f"Proceso finalizado exitosamente!\n\n"
                         f"{resumen}\n"
                         f"Otros formatos: {estadisticas['otros']}")
+                    self._preguntar_eliminar_marcadores(ruta_base)
 
             except Exception as e:
                 self.agregar_log(f"❌ Error fatal: {e}", "ERROR")
-                messagebox.showerror("Error", f"Ocurrió un error:\n{e}")
+                mostrar_error(self.ventana.root, "Error", f"Ocurrió un error:\n{e}")
             finally:
                 self._finalizar_proceso()
 
@@ -175,7 +191,7 @@ class OrganizarMixin:
         """Agrupa TODOS los archivos en carpetas numeradas con un único prefijo,
         sin distinguir por tipo/extensión ni usar las categorías configuradas"""
         if self.proceso_activo:
-            messagebox.showwarning("Proceso activo", "Ya hay un proceso en ejecución")
+            mostrar_advertencia(self.ventana.root, "Proceso activo", "Ya hay un proceso en ejecución")
             return
 
         if not self._validar_ruta_base():
@@ -183,23 +199,22 @@ class OrganizarMixin:
 
         prefijo = self.ventana.prefijo_general.get().strip()
         if not prefijo:
-            messagebox.showwarning("Sin prefijo", "Ingresa un prefijo para las carpetas")
+            mostrar_advertencia(self.ventana.root, "Sin prefijo", "Ingresa un prefijo para las carpetas")
             return
 
         ruta_base = self.ventana.ruta_base.get()
         modo_origen = self.ventana.modo_origen.get()
         orden = self.ventana.orden_archivos.get()
         agrupamiento = self.ventana.agrupamiento.get()
-        confirmar = messagebox.askyesno(
-            "Confirmar agrupación general",
+        if not confirmar(
+            self.ventana.root, "Confirmar agrupación general",
             f"Se agruparán TODOS los tipos de archivo en:\n{ruta_base}\n\n"
             f"Prefijo de carpeta: '{prefijo}'\n"
             f"Elementos a organizar: {DESCRIPCION_MODOS.get(modo_origen, modo_origen)}\n"
             f"Orden: {DESCRIPCION_ORDEN.get(orden, orden)}\n"
             f"Agrupamiento: {DESCRIPCION_AGRUPAMIENTO.get(agrupamiento, agrupamiento)}\n\n"
             f"Esta acción moverá archivos de todos los tipos. ¿Deseas continuar?"
-        )
-        if not confirmar:
+        ):
             return
 
         def ejecutar_organizacion_general():
@@ -234,7 +249,8 @@ class OrganizarMixin:
                     mostrar_detalle=mostrar_detalle,
                     modo_origen=modo_origen,
                     orden=orden,
-                    agrupamiento=agrupamiento
+                    agrupamiento=agrupamiento,
+                    exclusiones=self.ventana.exclusiones_lista()
                 )
 
                 resultado = organizador.organizar_todo(prefijo)
@@ -247,13 +263,14 @@ class OrganizarMixin:
                 if not self.proceso_activo:
                     self.agregar_log("⚠ Proceso detenido por el usuario", "WARNING")
                 else:
-                    messagebox.showinfo("Completado",
+                    mostrar_info(self.ventana.root, "Completado",
                         f"Proceso finalizado exitosamente!\n\n"
                         f"Archivos organizados: {resultado['total']}")
+                    self._preguntar_eliminar_marcadores(ruta_base)
 
             except Exception as e:
                 self.agregar_log(f"❌ Error fatal: {e}", "ERROR")
-                messagebox.showerror("Error", f"Ocurrió un error:\n{e}")
+                mostrar_error(self.ventana.root, "Error", f"Ocurrió un error:\n{e}")
             finally:
                 self._finalizar_proceso()
 

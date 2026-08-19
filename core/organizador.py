@@ -4,11 +4,33 @@ from pathlib import Path
 import shutil
 from typing import List, Tuple, Callable, Optional, Dict
 
-from core.utils import crear_nombre_unico, clasificar_archivos_carpeta, carpeta_pertenece_a_prefijo
-from core.config import CARPETA_OTROS
+from core.utils import crear_nombre_unico, clasificar_archivos_carpeta
+from core.config import CARPETA_OTROS, MARCADOR_CARPETA_ORGANIZADOR
 from core.modos import MODO_SOLO_CARPETAS, MODO_SOLO_SUELTOS, descripcion_modo
 from core.orden import ORDEN_FECHA, ORDEN_NOMBRE_ZA, descripcion_orden, ordenar_archivos
 from core.agrupamiento import AGRUPAR_CANTIDAD, AGRUPAR_LETRA, descripcion_agrupamiento, clave_grupo
+
+
+def eliminar_marcadores(ruta_base: Path) -> int:
+    """Elimina el archivo oculto marcador de todas las carpetas de primer nivel
+    de ruta_base que lo tengan. Devuelve cuántos se eliminaron.
+
+    Nota: sin el marcador, el organizador deja de reconocer esas carpetas como
+    propias, así que una corrida futura sobre la misma ruta podría volver a
+    escanear y reorganizar su contenido.
+    """
+    eliminados = 0
+    for carpeta in ruta_base.iterdir():
+        if not carpeta.is_dir():
+            continue
+        marcador = carpeta / MARCADOR_CARPETA_ORGANIZADOR
+        if marcador.exists():
+            try:
+                marcador.unlink()
+                eliminados += 1
+            except OSError:
+                pass
+    return eliminados
 
 
 class OrganizadorArchivos:
@@ -25,7 +47,8 @@ class OrganizadorArchivos:
                  mostrar_detalle: bool = True,
                  modo_origen: str = MODO_SOLO_CARPETAS,
                  orden: str = ORDEN_FECHA,
-                 agrupamiento: str = AGRUPAR_CANTIDAD):
+                 agrupamiento: str = AGRUPAR_CANTIDAD,
+                 exclusiones: Optional[List[str]] = None):
         """
         Inicializa el organizador
 
@@ -42,6 +65,8 @@ class OrganizadorArchivos:
             modo_origen: Qué elementos procesar (ver core.modos)
             orden: Criterio para distribuir los archivos (ver core.orden)
             agrupamiento: Cómo repartir los archivos ya ordenados (ver core.agrupamiento)
+            exclusiones: Nombres exactos (carpetas o archivos sueltos, directamente
+                         dentro de ruta_base) que nunca se mueven ni renombran
         """
         self.ruta_base = ruta_base
         self.categorias = categorias
@@ -54,6 +79,7 @@ class OrganizadorArchivos:
         self.modo_origen = modo_origen
         self.orden = orden
         self.agrupamiento = agrupamiento
+        self.exclusiones = {nombre.strip().lower() for nombre in (exclusiones or []) if nombre.strip()}
 
         # Mapa extensión -> id de categoría, para clasificar en una sola pasada
         self.mapa_extensiones: Dict[str, str] = {}
@@ -65,13 +91,38 @@ class OrganizadorArchivos:
         for categoria in self.categorias:
             self.estadisticas[categoria["id"]] = 0
 
-    def _prefijos_activos(self) -> List[str]:
-        return [c["prefijo"] for c in self.categorias]
+    def _esta_excluido(self, nombre: str) -> bool:
+        """Indica si un nombre (de carpeta o archivo suelto) está en la lista de exclusiones"""
+        return nombre.strip().lower() in self.exclusiones
+
+    def _carpeta_generada_por_organizador(self, carpeta: Path) -> bool:
+        """Indica si una carpeta fue creada por el organizador (tiene el archivo
+        marcador adentro), en vez de adivinarlo por si su nombre coincide con
+        el patrón 'prefijo número'. Así una carpeta del usuario que coincida
+        por casualidad con ese patrón no se salta por error."""
+        return (carpeta / MARCADOR_CARPETA_ORGANIZADOR).exists()
+
+    def _marcar_carpeta_generada(self, carpeta: Path):
+        """Deja el archivo marcador dentro de una carpeta recién creada por el organizador,
+        oculto en Windows para no confundir al usuario cuando explore la carpeta"""
+        try:
+            ruta_marcador = carpeta / MARCADOR_CARPETA_ORGANIZADOR
+            ruta_marcador.touch()
+            try:
+                import ctypes
+                FILE_ATTRIBUTE_HIDDEN = 0x02
+                ctypes.windll.kernel32.SetFileAttributesW(str(ruta_marcador), FILE_ATTRIBUTE_HIDDEN)
+            except (AttributeError, OSError):
+                pass
+        except OSError:
+            pass
 
     def _log_configuracion(self):
         self._log(f"📂 Modo de organización: {descripcion_modo(self.modo_origen)}")
         self._log(f"🔤 Orden de los archivos: {descripcion_orden(self.orden)}")
         self._log(f"🗂️ Agrupamiento: {descripcion_agrupamiento(self.agrupamiento)}")
+        if self.exclusiones:
+            self._log(f"🚫 Excluidos: {', '.join(sorted(self.exclusiones))}")
 
     def renombrar_carpetas(self, prefijo: str) -> Tuple[int, int]:
         """
@@ -85,7 +136,8 @@ class OrganizadorArchivos:
         """
         carpetas = sorted([
             c for c in self.ruta_base.iterdir()
-            if c.is_dir() and not carpeta_pertenece_a_prefijo(c.name, prefijo)
+            if c.is_dir() and not self._carpeta_generada_por_organizador(c)
+            and not self._esta_excluido(c.name)
         ])
 
         self._log(f"Encontradas {len(carpetas)} carpetas para renombrar")
@@ -104,10 +156,13 @@ class OrganizadorArchivos:
             if carpeta != ruta_nueva:
                 try:
                     carpeta.rename(ruta_nueva)
+                    self._marcar_carpeta_generada(ruta_nueva)
                     self._log(f"✓ {carpeta.name} → {nuevo_nombre}", "SUCCESS")
                     renombradas += 1
                 except Exception as e:
                     self._log(f"✗ Error renombrando {carpeta.name}: {e}", "ERROR")
+            else:
+                self._marcar_carpeta_generada(carpeta)
 
             procesadas += 1
             self._actualizar_progreso(f"Renombrando carpeta {i} de {len(carpetas)}")
@@ -126,8 +181,6 @@ class OrganizadorArchivos:
         self._log("Iniciando organización de archivos")
         self._actualizar_progreso("Buscando archivos...")
 
-        prefijos_activos = self._prefijos_activos()
-
         archivos_por_categoria: Dict[str, List[Tuple[Path, float]]] = {c["id"]: [] for c in self.categorias}
         otros_archivos: List[Path] = []
         carpetas_revisar = []
@@ -138,13 +191,15 @@ class OrganizadorArchivos:
             if self._debe_detener():
                 break
 
+            if self._esta_excluido(item.name):
+                continue
+
             if item.is_dir():
                 if self.modo_origen == MODO_SOLO_SUELTOS:
                     continue
 
                 carpeta = item
-                if carpeta.name == CARPETA_OTROS or any(
-                        carpeta_pertenece_a_prefijo(carpeta.name, p) for p in prefijos_activos):
+                if self._carpeta_generada_por_organizador(carpeta):
                     continue
 
                 carpetas_revisar.append(carpeta)
@@ -214,12 +269,15 @@ class OrganizadorArchivos:
             if self._debe_detener():
                 break
 
+            if self._esta_excluido(item.name):
+                continue
+
             if item.is_dir():
                 if self.modo_origen == MODO_SOLO_SUELTOS:
                     continue
 
                 carpeta = item
-                if carpeta.name == CARPETA_OTROS or carpeta_pertenece_a_prefijo(carpeta.name, prefijo):
+                if self._carpeta_generada_por_organizador(carpeta):
                     continue
 
                 carpetas_revisar.append(carpeta)
@@ -250,6 +308,8 @@ class OrganizadorArchivos:
         """Mueve archivos sin categoría reconocida a 'otros_formatos/'"""
         carpeta_otros = self.ruta_base / CARPETA_OTROS
         carpeta_otros.mkdir(exist_ok=True)
+        if not self._carpeta_generada_por_organizador(carpeta_otros):
+            self._marcar_carpeta_generada(carpeta_otros)
 
         self._log(f"\n📁 Moviendo {len(archivos)} archivos a '{CARPETA_OTROS}/'...")
 
@@ -293,6 +353,8 @@ class OrganizadorArchivos:
             nombre_carpeta = f"{prefijo} {str(idx_carpeta).zfill(self.digitos)}"
             ruta_destino = self.ruta_base / nombre_carpeta
             ruta_destino.mkdir(exist_ok=True)
+            if not self._carpeta_generada_por_organizador(ruta_destino):
+                self._marcar_carpeta_generada(ruta_destino)
 
             destino_final = crear_nombre_unico(ruta_destino / ruta_archivo.name)
 
@@ -345,6 +407,8 @@ class OrganizadorArchivos:
                 nombre_carpeta = f"{prefijo} {clave} {str(idx_carpeta).zfill(self.digitos)}"
                 ruta_destino = self.ruta_base / nombre_carpeta
                 ruta_destino.mkdir(exist_ok=True)
+                if not self._carpeta_generada_por_organizador(ruta_destino):
+                    self._marcar_carpeta_generada(ruta_destino)
 
                 destino_final = crear_nombre_unico(ruta_destino / ruta_archivo.name)
 

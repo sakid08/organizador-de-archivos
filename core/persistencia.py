@@ -6,6 +6,7 @@ from typing import List, Dict
 
 RUTA_DATOS = Path(__file__).resolve().parent.parent / "data"
 RUTA_CATEGORIAS_USUARIO = RUTA_DATOS / "categorias_personalizadas.json"
+RUTA_EXCLUSIONES = RUTA_DATOS / "exclusiones.json"
 
 
 def cargar_categorias_personalizadas() -> List[Dict]:
@@ -27,3 +28,21 @@ def guardar_categorias_personalizadas(categorias: List[Dict]) -> None:
     RUTA_DATOS.mkdir(parents=True, exist_ok=True)
     with open(RUTA_CATEGORIAS_USUARIO, "w", encoding="utf-8") as f:
         json.dump(categorias, f, ensure_ascii=False, indent=2)
+
+
+def cargar_exclusiones() -> List[str]:
+    """Carga la lista de nombres de carpetas/archivos excluidos de la organización"""
+    if not RUTA_EXCLUSIONES.exists():
+        return []
+    try:
+        with open(RUTA_EXCLUSIONES, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def guardar_exclusiones(nombres: List[str]) -> None:
+    """Guarda la lista de nombres excluidos en disco"""
+    RUTA_DATOS.mkdir(parents=True, exist_ok=True)
+    with open(RUTA_EXCLUSIONES, "w", encoding="utf-8") as f:
+        json.dump(nombres, f, ensure_ascii=False, indent=2)

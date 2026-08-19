@@ -2,13 +2,15 @@
 """Controlador principal de la aplicación"""
 
 import copy
-from tkinter import messagebox
+from pathlib import Path
 
 from core.config import CATEGORIAS_DEFAULT
 from core.utils import validar_ruta
 from core.persistencia import cargar_categorias_personalizadas
+from core.organizador import eliminar_marcadores
 from core.acciones_organizar import OrganizarMixin
 from core.acciones_categorias import CategoriasMixin
+from gui.dialogs import mostrar_advertencia, mostrar_info, confirmar
 
 
 class AppController(OrganizarMixin, CategoriasMixin):
@@ -53,10 +55,12 @@ class AppController(OrganizarMixin, CategoriasMixin):
         """Verifica que el usuario haya introducido una ruta base (no puede quedar vacía ni por defecto)"""
         ruta_texto = self.ventana.ruta_base.get().strip()
         if not ruta_texto:
-            messagebox.showwarning("Ruta requerida", "Debes indicar una ruta base antes de continuar")
+            mostrar_advertencia(self.ventana.root, "Ruta requerida",
+                                 "Debes indicar una ruta base antes de continuar")
             return False
         if not validar_ruta(ruta_texto):
-            messagebox.showwarning("Ruta inválida", f"La ruta indicada no existe o no es accesible:\n{ruta_texto}")
+            mostrar_advertencia(self.ventana.root, "Ruta inválida",
+                                 f"La ruta indicada no existe o no es accesible:\n{ruta_texto}")
             return False
         return True
 
@@ -78,3 +82,24 @@ class AppController(OrganizarMixin, CategoriasMixin):
         """Detiene el proceso en ejecución"""
         self.proceso_activo = False
         self.agregar_log("⚠ Deteniendo proceso...", "WARNING")
+
+    def eliminar_marcadores_manual(self):
+        """Elimina, a pedido del usuario, los archivos ocultos marcadores de
+        todas las carpetas de la ruta base"""
+        if not self._validar_ruta_base():
+            return
+
+        ruta_base = Path(self.ventana.ruta_base.get())
+        if not confirmar(
+            self.ventana.root, "Eliminar archivos ocultos",
+            f"Esto eliminará los archivos ocultos marcadores de las carpetas dentro de:\n{ruta_base}\n\n"
+            "Esos archivos son los que le permiten al organizador reconocer sus propias "
+            "carpetas en corridas futuras y no volver a mezclar su contenido.\n\n"
+            "Sin ellos, una futura organización sobre esta misma ruta podría volver a "
+            "escanear esas carpetas.\n\n¿Deseas continuar?"
+        ):
+            return
+
+        eliminados = eliminar_marcadores(ruta_base)
+        self.agregar_log(f"🗑 Archivos ocultos marcadores eliminados: {eliminados}", "INFO")
+        mostrar_info(self.ventana.root, "Listo", f"Se eliminaron {eliminados} archivos ocultos.")

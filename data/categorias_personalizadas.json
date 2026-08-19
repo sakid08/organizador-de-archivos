@@ -1,0 +1,12 @@
+[
+  {
+    "id": "comprimidos",
+    "nombre": "Comprimidos",
+    "prefijo": "Comprimidos",
+    "extensiones": [
+      ".rar",
+      ".zip"
+    ],
+    "activa": true
+  }
+]

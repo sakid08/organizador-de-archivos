@@ -64,21 +64,6 @@ def normalizar_extensiones(extensiones: List[str]) -> List[str]:
     """Normaliza extensiones asegurando que tengan punto"""
     return [ext if ext.startswith(".") else f".{ext}" for ext in extensiones]
 
-def carpeta_pertenece_a_prefijo(nombre_carpeta: str, prefijo: str) -> bool:
-    """
-    Indica si una carpeta fue generada por el organizador con el prefijo dado,
-    es decir si su nombre es exactamente "prefijo numero", o "prefijo <grupo> numero"
-    cuando se usó un método de agrupamiento (año "2020", mes "2020-05" o letra "A"/"#").
-
-    Se usa en vez de un simple startswith() porque dos prefijos distintos pueden
-    ser subcadena uno del otro (p. ej. "Capturas de pantalla" es substring de
-    "Capturas de pantallaaa"), lo que con startswith() hacia que carpetas de un
-    prefijo se confundieran con las de otro y se saltearan por error.
-    """
-    grupo = r"( \d{4}(-\d{2})?| [A-Z#])?"
-    patron = r"^" + re.escape(prefijo) + grupo + r" \d+$"
-    return re.match(patron, nombre_carpeta) is not None
-
 
 def generar_id_categoria(nombre: str, ids_existentes: List[str]) -> str:
     """Genera un id único (slug) a partir del nombre de una categoría"""

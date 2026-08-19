@@ -12,16 +12,34 @@ from tkinter import ttk
 
 FONT_FAMILY = "Segoe UI"
 
+# Fuente de iconos del sistema (Windows 10/11): da un set de glifos consistente
+# en vez de mezclar emoji de distintas familias visuales. Se usa incrustando
+# el carácter directamente en el texto de labels/botones con la fuente normal:
+# Windows resuelve el glifo por reemplazo de fuente automáticamente.
+ICONO_ORGANIZAR = chr(0xE768)  # Play
+ICONO_EDITAR = chr(0xE70F)  # Edit (lápiz)
+ICONO_DETENER = chr(0xE71A)  # Stop
+ICONO_ELIMINAR = chr(0xE74D)  # Delete (papelera)
+ICONO_CARPETA = chr(0xE8B7)  # Folder
+ICONO_ARCHIVO = chr(0xE8A5)  # Page (documento)
+ICONO_AGREGAR = chr(0xE710)  # Add (+)
+ICONO_TEMA = chr(0xE713)  # Settings (engranaje)
+ICONO_INFO = chr(0xE946)  # Info
+ICONO_ADVERTENCIA = chr(0xE7BA)  # Warning (triángulo)
+ICONO_ERROR = chr(0xE711)  # Cancel (X)
+ICONO_PREGUNTA = chr(0xE897)  # Help (?)
+
 TEMAS = {
     "claro": {
-        "BG": "#f7f8fa",
+        "BG": "#eef1f5",
         "CARD": "#ffffff",
         "BORDER": "#e5e7eb",
+        "BORDER_SUBTLE": "#e9ecf1",
         "TEXT": "#1f2937",
         "TEXT_MUTED": "#6b7280",
-        "ACCENT": "#b8fb2b",
-        "ACCENT_HOVER": "#a3e619",
-        "ACCENT_LIGHT": "#eefccb",
+        "ACCENT": "#38bdf8",
+        "ACCENT_HOVER": "#0ea5e9",
+        "ACCENT_LIGHT": "#e0f2fe",
         "SUCCESS": "#16a34a",
         "ERROR": "#dc2626",
         "WARNING": "#d97706",
@@ -29,14 +47,15 @@ TEMAS = {
         "DANGER_BG": "#fef2f2",
     },
     "gris": {
-        "BG": "#c9ced6",
-        "CARD": "#e3e6eb",
-        "BORDER": "#9aa2ad",
-        "TEXT": "#1f2937",
-        "TEXT_MUTED": "#454e5c",
-        "ACCENT": "#b8fb2b",
-        "ACCENT_HOVER": "#a3e619",
-        "ACCENT_LIGHT": "#dff0a8",
+        "BG": "#94a3b8",
+        "CARD": "#cbd5e1",
+        "BORDER": "#64748b",
+        "BORDER_SUBTLE": "#aab6c4",
+        "TEXT": "#0f172a",
+        "TEXT_MUTED": "#334155",
+        "ACCENT": "#0284c7",
+        "ACCENT_HOVER": "#0369a1",
+        "ACCENT_LIGHT": "#dff3fd",
         "SUCCESS": "#15803d",
         "ERROR": "#b91c1c",
         "WARNING": "#b45309",
@@ -47,11 +66,12 @@ TEMAS = {
         "BG": "#111827",
         "CARD": "#1f2937",
         "BORDER": "#374151",
+        "BORDER_SUBTLE": "#293241",
         "TEXT": "#f3f4f6",
         "TEXT_MUTED": "#9ca3af",
-        "ACCENT": "#b8fb2b",
-        "ACCENT_HOVER": "#c6ff4d",
-        "ACCENT_LIGHT": "#2e3b12",
+        "ACCENT": "#38bdf8",
+        "ACCENT_HOVER": "#7dd3fc",
+        "ACCENT_LIGHT": "#0c4a6e",
         "SUCCESS": "#22c55e",
         "ERROR": "#f87171",
         "WARNING": "#fbbf24",
@@ -163,9 +183,9 @@ def aplicar_estilos(root: tk.Tk) -> ttk.Style:
     style.configure("Title.TLabel", background=COLOR_BG, foreground=COLOR_TEXT,
                      font=(FONT_FAMILY, 18, "bold"))
     style.configure("Subtitle.TLabel", background=COLOR_BG, foreground=COLOR_TEXT_MUTED,
-                     font=(FONT_FAMILY, 10))
+                     font=(FONT_FAMILY, 9))
     style.configure("SectionTitle.Card.TLabel", background=COLOR_CARD,
-                     foreground=COLOR_TEXT, font=(FONT_FAMILY, 11, "bold"))
+                     foreground=COLOR_TEXT, font=(FONT_FAMILY, 13, "bold"))
 
     # Entradas
     style.configure("TEntry", fieldbackground=COLOR_CARD, background=COLOR_CARD,
@@ -194,11 +214,11 @@ def aplicar_estilos(root: tk.Tk) -> ttk.Style:
     style.configure("TButton", font=(FONT_FAMILY, 10), padding=(14, 8),
                      relief="flat", borderwidth=0)
 
-    style.configure("Primary.TButton", background=COLOR_ACCENT, foreground="#1a2e05",
+    style.configure("Primary.TButton", background=COLOR_ACCENT, foreground="#ffffff",
                      font=(FONT_FAMILY, 10, "bold"), padding=(16, 9))
     style.map("Primary.TButton",
-               background=[("disabled", "#dcf7a6"), ("active", COLOR_ACCENT_HOVER)],
-               foreground=[("disabled", "#6b7d4a")])
+               background=[("disabled", "#bae6fd"), ("active", COLOR_ACCENT_HOVER)],
+               foreground=[("disabled", "#ffffff")])
 
     style.configure("Secondary.TButton", background=COLOR_CARD, foreground=COLOR_TEXT,
                      bordercolor=COLOR_BORDER, relief="solid", borderwidth=1,
@@ -239,6 +259,32 @@ def aplicar_estilos(root: tk.Tk) -> ttk.Style:
     style.configure("TRadiobutton", background=COLOR_BG, foreground=COLOR_TEXT,
                      font=(FONT_FAMILY, 10))
     style.map("TRadiobutton", background=[("active", COLOR_BG)])
+
+    style.configure("Card.TRadiobutton", background=COLOR_CARD, foreground=COLOR_TEXT,
+                     font=(FONT_FAMILY, 9))
+    style.map("Card.TRadiobutton", background=[("active", COLOR_CARD)])
+
+    # Filas de opciones seleccionables (radiobuttons con fondo resaltado si están activas)
+    style.configure("Option.TFrame", background=COLOR_BG)
+    style.configure("OptionSelected.TFrame", background=COLOR_ACCENT_LIGHT)
+
+    # Layout sin el punto/indicador: el fondo de la fila ya indica la selección
+    _layout_radio_sin_indicador = [
+        ("Radiobutton.padding", {"sticky": "nswe", "children": [
+            ("Radiobutton.label", {"sticky": "nswe"}),
+        ]}),
+    ]
+    style.layout("Option.TRadiobutton", _layout_radio_sin_indicador)
+    style.layout("OptionSelected.TRadiobutton", _layout_radio_sin_indicador)
+
+    style.configure("Option.TRadiobutton", background=COLOR_BG, foreground=COLOR_TEXT,
+                     font=(FONT_FAMILY, 9), padding=(8, 6), relief="flat", borderwidth=0)
+    style.map("Option.TRadiobutton", background=[("active", COLOR_BG)])
+
+    style.configure("OptionSelected.TRadiobutton", background=COLOR_ACCENT_LIGHT,
+                     foreground=COLOR_TEXT, font=(FONT_FAMILY, 9, "bold"), padding=(8, 6),
+                     relief="flat", borderwidth=0)
+    style.map("OptionSelected.TRadiobutton", background=[("active", COLOR_ACCENT_LIGHT)])
 
     # Progressbar
     style.configure("Modern.Horizontal.TProgressbar", troughcolor=COLOR_ACCENT_LIGHT,

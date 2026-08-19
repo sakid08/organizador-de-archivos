@@ -1,7 +1,10 @@
 """Sección 'Categorías': filas dinámicas (predeterminadas y personalizadas)"""
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
+
+from gui import estilos
+from gui.dialogs import confirmar
 
 
 class CategoriasMixin:
@@ -26,7 +29,7 @@ class CategoriasMixin:
 
         # Botón para agregar categorías personalizadas nuevas
         self.btn_agregar_categoria = ttk.Button(
-            self._categorias_inner, text="+ Nueva categoría personalizada",
+            self._categorias_inner, text=f"{estilos.ICONO_AGREGAR}  Nueva categoría personalizada",
             style="GhostCard.TButton", command=self._agregar_categoria_personalizada)
 
         self._reposicionar_boton_agregar()
@@ -148,8 +151,8 @@ class CategoriasMixin:
             return
         estado = self.categorias_estado.get(categoria_id)
         nombre = estado["nombre"] if estado else categoria_id
-        if messagebox.askyesno("Eliminar categoría",
-                                f"¿Eliminar la categoría personalizada '{nombre}'?"):
+        if confirmar(self.root, "Eliminar categoría",
+                     f"¿Eliminar la categoría personalizada '{nombre}'?"):
             self.app_controller.eliminar_categoria_personalizada(categoria_id)
 
     def categoria_activa(self, categoria_id) -> bool:

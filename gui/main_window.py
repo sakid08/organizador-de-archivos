@@ -2,16 +2,17 @@ import tkinter as tk
 from tkinter import ttk
 
 from gui import estilos
-from gui.estilos import aplicar_estilos, COLOR_BG, COLOR_BORDER, FONT_FAMILY, NOMBRES_TEMAS
+from gui.estilos import aplicar_estilos, COLOR_BG, FONT_FAMILY, NOMBRES_TEMAS
 from gui.secciones.configuracion import ConfiguracionMixin
 from gui.secciones.categorias import CategoriasMixin
+from gui.secciones.exclusiones import ExclusionesMixin
 from gui.secciones.opciones import OpcionesMixin
 from gui.secciones.botones import BotonesMixin
 from gui.secciones.progreso import ProgresoMixin
 from gui.secciones.log import LogMixin
 
 
-class VentanaPrincipal(ConfiguracionMixin, CategoriasMixin, OpcionesMixin,
+class VentanaPrincipal(ConfiguracionMixin, CategoriasMixin, ExclusionesMixin, OpcionesMixin,
                         BotonesMixin, ProgresoMixin, LogMixin):
     """Ventana principal de la aplicación"""
 
@@ -61,6 +62,7 @@ class VentanaPrincipal(ConfiguracionMixin, CategoriasMixin, OpcionesMixin,
         self.btn_renombrar = None
         self.btn_detener = None
         self.btn_agrupar_todo = None
+        self.btn_quitar_marcadores = None
 
         # Crear interfaz
         aplicar_estilos(self.root)
@@ -78,19 +80,50 @@ class VentanaPrincipal(ConfiguracionMixin, CategoriasMixin, OpcionesMixin,
             self.btn_detener.config(command=self.app_controller.detener_proceso)
         if self.btn_agrupar_todo:
             self.btn_agrupar_todo.config(command=self.app_controller.iniciar_organizacion_general)
+        if self.btn_quitar_marcadores:
+            self.btn_quitar_marcadores.config(command=self.app_controller.eliminar_marcadores_manual)
 
     def _setup_ui(self):
         """Configura la interfaz de usuario"""
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
+        self.root.rowconfigure(1, weight=1)
 
-        # Canvas + scrollbar para que la ventana sea desplazable con muchas categorías
+        # Encabezado fijo: siempre visible, sin desplazarse con el contenido
+        header_outer = tk.Frame(self.root, bg=COLOR_BG)
+        estilos.registrar_widget(header_outer, bg="BG")
+        header_outer.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E))
+        header_outer.columnconfigure(0, weight=1)
+
+        header_frame = ttk.Frame(header_outer, style="TFrame", padding=(24, 18, 24, 12))
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        header_frame.columnconfigure(0, weight=1)
+
+        titulos_frame = ttk.Frame(header_frame, style="TFrame")
+        titulos_frame.grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(titulos_frame, text="Organizador de Archivos",
+                  style="Title.TLabel").pack(anchor="w")
+        ttk.Label(titulos_frame, text="Organiza imágenes, videos, documentos y más, automáticamente",
+                  style="Subtitle.TLabel").pack(anchor="w", pady=(2, 0))
+
+        tema_frame = ttk.Frame(header_frame, style="TFrame")
+        tema_frame.grid(row=0, column=1, sticky=tk.NE)
+        ttk.Label(tema_frame, text=estilos.ICONO_TEMA, font=("Segoe UI", 13)).pack(
+            side=tk.LEFT, padx=(0, 6))
+        combo_tema = ttk.Combobox(tema_frame, textvariable=self.tema_var, state="readonly",
+                                   values=list(NOMBRES_TEMAS.values()), width=8)
+        combo_tema.pack(side=tk.LEFT)
+        combo_tema.bind("<<ComboboxSelected>>", self._cambiar_tema)
+
+        separador = ttk.Separator(header_outer, orient="horizontal")
+        separador.grid(row=1, column=0, sticky=(tk.W, tk.E))
+
+        # Canvas + scrollbar para que el resto del contenido sea desplazable
         canvas = tk.Canvas(self.root, bg=COLOR_BG, highlightthickness=0)
         estilos.registrar_widget(canvas, bg="BG")
         scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=canvas.yview)
         canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        canvas.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
 
         main_frame = ttk.Frame(canvas, padding="24", style="TFrame")
         canvas_window = canvas.create_window((0, 0), window=main_frame, anchor="nw")
@@ -111,36 +144,19 @@ class VentanaPrincipal(ConfiguracionMixin, CategoriasMixin, OpcionesMixin,
 
         main_frame.columnconfigure(0, weight=1)
 
-        # Encabezado
-        header_frame = ttk.Frame(main_frame, style="TFrame")
-        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 18))
-        header_frame.columnconfigure(0, weight=1)
-
-        titulos_frame = ttk.Frame(header_frame, style="TFrame")
-        titulos_frame.grid(row=0, column=0, sticky=tk.W)
-        ttk.Label(titulos_frame, text="Organizador de Archivos",
-                  style="Title.TLabel").pack(anchor="w")
-        ttk.Label(titulos_frame, text="Organiza imágenes, videos, documentos y más, automáticamente",
-                  style="Subtitle.TLabel").pack(anchor="w", pady=(2, 0))
-
-        tema_frame = ttk.Frame(header_frame, style="TFrame")
-        tema_frame.grid(row=0, column=1, sticky=tk.NE)
-        ttk.Label(tema_frame, text="Tema", style="TLabel").pack(side=tk.LEFT, padx=(0, 6))
-        combo_tema = ttk.Combobox(tema_frame, textvariable=self.tema_var, state="readonly",
-                                   values=list(NOMBRES_TEMAS.values()), width=8)
-        combo_tema.pack(side=tk.LEFT)
-        combo_tema.bind("<<ComboboxSelected>>", self._cambiar_tema)
-
         # Frame de configuración general
         config_frame = self._crear_frame_configuracion(main_frame)
-        config_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 16))
+        config_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 16))
 
         # Frame de categorías
         self.categorias_frame = self._crear_frame_categorias(main_frame)
-        self.categorias_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 16))
+        self.categorias_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 16))
+
+        # Frame de exclusiones (carpetas/archivos que no se tocan)
+        self._crear_frame_exclusiones(main_frame).grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 16))
 
         # Opciones de organización (modo, orden, agrupamiento)
-        self._crear_frame_opciones(main_frame).grid(row=3, column=0, sticky=tk.W, pady=(0, 16))
+        self._crear_frame_opciones(main_frame).grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 16))
 
         # Frame de botones de acción
         self._crear_botones_accion(main_frame).grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(0, 16))
@@ -167,10 +183,12 @@ class VentanaPrincipal(ConfiguracionMixin, CategoriasMixin, OpcionesMixin,
                 break
 
     def _crear_card(self, parent, titulo=None):
-        """Crea un contenedor tipo 'card' con borde sutil. Compartido por todas las secciones"""
-        outer = tk.Frame(parent, bg=COLOR_BORDER)
-        estilos.registrar_widget(outer, bg="BORDER")
-        inner = ttk.Frame(outer, padding="16", style="Card.TFrame")
+        """Crea un contenedor tipo 'card'. La separación con el fondo se apoya
+        sobre todo en el contraste de color; el borde es solo un trazo casi
+        imperceptible para evitar el efecto de "caja dentro de caja"."""
+        outer = tk.Frame(parent, bg=estilos.COLOR_BORDER_SUBTLE)
+        estilos.registrar_widget(outer, bg="BORDER_SUBTLE")
+        inner = ttk.Frame(outer, padding="18", style="Card.TFrame")
         inner.pack(fill="both", expand=True, padx=1, pady=1)
         if titulo:
             ttk.Label(inner, text=titulo, style="SectionTitle.Card.TLabel").grid(
